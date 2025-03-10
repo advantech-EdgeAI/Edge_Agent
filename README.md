@@ -257,7 +257,7 @@ Sign up at HuggingFace and obtain an access token (Settings section).
 
 Start Edge Agent container with HuggingFace token:
    ```sh
-   jetson-containers run --env HUGGINGFACE_TOKEN= hf_xyz123abc456 \
+   jetson-containers run --env HUGGINGFACE_TOKEN=hf_xyz123abc456 \
    -v /etc/machine-id:/etc/machine-id \
    -v /:/dummy_root:ro \
    -v /ssd/edge_agent:/opt/NanoLLM \
