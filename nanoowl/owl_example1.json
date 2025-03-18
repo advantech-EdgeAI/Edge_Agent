@@ -1,0 +1,51 @@
+{
+    "model": "owlv2",
+    "MainObject": {
+        "person": {
+            "conf": 0.15,
+            "minArea": 10000
+        }
+    },
+    "Prompts": {
+        "face shields": {
+            "abbr": "face shields",
+            "conf": 0.3,
+            "minArea": 2000
+        },
+        "white glove": {
+            "abbr": "glove",
+            "conf": 0.2,
+            "minArea": 2000,
+            "pos": "LR"
+        },
+        "aluminized heat protection apron": {
+            "abbr": "protection apron",
+            "conf": 0.2,
+            "minArea": 30000
+        },
+        "black cap toe shoes": {
+            "abbr": "boots",
+            "conf": 0.1,
+            "minArea": 500,
+            "pos": "LR"
+        }
+    },
+    "Compl": [
+        "sandals",
+        "slipper",
+        "socks",
+        "plam"
+    ],
+    "Camera": 0,
+    "CheckPeriod": 5,
+    "ValidChunkSize": 3,
+    "ValidRatio": 0.5,
+    "OKWaiting": 5,
+    "NGWaiting": 10,
+    "ROI": [
+        0.4,
+        0.05,
+        0.75,
+        1.0
+    ]
+}

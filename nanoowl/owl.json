@@ -1,0 +1,42 @@
+{
+    "model": "owlv2",
+    "MainObject": {
+        "person": {
+            "conf": 0.15,
+            "minArea": 10000
+        }
+    },
+    "Prompts": {
+        "face shields": {
+            "abbr": "face shields",
+            "conf": 0.3,
+            "minArea": 2000
+        },
+        "white glove": {
+            "abbr": "glove",
+            "conf": 0.2,
+            "minArea": 2000,
+            "pos": "LR"
+        },
+        "aluminized heat protection apron": {
+            "abbr": "protection apron",
+            "conf": 0.2,
+            "minArea": 30000
+        }
+    },
+    "Compl": [
+        "plam"
+    ],
+    "Camera": 0,
+    "CheckPeriod": 5,
+    "ValidChunkSize": 3,
+    "ValidRatio": 0.5,
+    "OKWaiting": 5,
+    "NGWaiting": 10,
+    "ROI": [
+        0.4,
+        0.05,
+        0.75,
+        1.0
+    ]
+}

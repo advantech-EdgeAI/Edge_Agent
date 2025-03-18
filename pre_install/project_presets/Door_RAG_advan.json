@@ -1,0 +1,275 @@
+{
+  "version": "24.7",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 14
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 46,
+        "w": 8,
+        "h": 6
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "RateLimit",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "AutoPrompt_ICL",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "NanoDB_Fashion",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 304.1111111111111,
+        "y": 231
+      },
+      "rate": 15.0,
+      "chunk": null,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 15.0,
+        "drop_inputs": true,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "AutoPrompt_ICL",
+      "type": "AutoPrompt_ICL",
+      "connections": [
+        {
+          "to": "NanoLLM_ICL",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 682,
+        "y": 203
+      },
+      "template": "<reset><text><image>Check the current the status of the door. Is it open or closed?",
+      "seq_replace_mode": true,
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "init_kwargs": {
+        "template": "<reset><text><image>Check the current the status of the door. Is it open or closed?",
+        "seq_replace_mode": true,
+        "ROI": false,
+        "ROI_Coordinates": "0,0,1,1",
+        "name": "AutoPrompt_ICL"
+      }
+    },
+    {
+      "name": "NanoDB_Fashion",
+      "type": "NanoDB_Fashion",
+      "connections": [
+        {
+          "to": "WebClient",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "AutoPrompt_ICL",
+          "input": 0,
+          "output": 1
+        },
+        {
+          "to": "TextStream",
+          "input": 0,
+          "output": 1
+        }
+      ],
+      "layout_grid": {
+        "x": 0,
+        "y": 14,
+        "w": 5,
+        "h": 10
+      },
+      "layout_node": {
+        "x": 480,
+        "y": 33
+      },
+      "top_k": 16,
+      "search_time": "door",
+      "rag_sample_size": 1,
+      "rag_threshold": 90.0,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "path": "/data/nanodb/images",
+        "model": "openai/clip-vit-large-patch14-336",
+        "dtype": "float16",
+        "reserve": 1024,
+        "top_k": 16,
+        "crop": true,
+        "drop_inputs": true,
+        "search_time": "door",
+        "rag_sample_size": 1,
+        "rag_threshold": 90.0,
+        "name": "NanoDB_Fashion"
+      }
+    },
+    {
+      "name": "NanoLLM_ICL",
+      "type": "NanoLLM_ICL",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 1
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 920,
+        "y": 173
+      },
+      "max_new_tokens": 128,
+      "min_new_tokens": -1,
+      "do_sample": false,
+      "temperature": 0.7,
+      "top_p": 0.95,
+      "repetition_penalty": 1.0,
+      "drop_inputs": true,
+      "system_prompt": "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions.",
+      "model": "Efficient-Large-Model/VILA1.5-13b",
+      "init_kwargs": {
+        "model": "Efficient-Large-Model/VILA1.5-13b",
+        "api": "MLC",
+        "quantization": "q8f16_ft",
+        "drop_inputs": true,
+        "chat_template": "llava-v1",
+        "name": "NanoLLM_ICL"
+      }
+    },
+    {
+      "name": "VideoOverlay",
+      "type": "VideoOverlay",
+      "connections": [
+        {
+          "to": "VideoOutput",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1131,
+        "y": 444
+      },
+      "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+      "font_size": 32.0,
+      "prefix_text": null,
+      "color": "#78d715",
+      "background": "#000000",
+      "opacity": 0.4,
+      "x": 5,
+      "y": 5,
+      "line_spacing": 38,
+      "line_length": null,
+      "return_copy": true,
+      "init_kwargs": {
+        "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "font_size": 32.0,
+        "color": "#78d715",
+        "background": "#000000",
+        "opacity": 0.4,
+        "x": 5,
+        "y": 5,
+        "line_spacing": 38,
+        "return_copy": true,
+        "name": "VideoOverlay"
+      }
+    },
+    {
+      "name": "VideoOutput",
+      "type": "VideoOutput",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 3,
+        "h": 14
+      },
+      "layout_node": {
+        "x": 1350,
+        "y": 465
+      },
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "init_kwargs": {
+        "video_output": "display://0",
+        "video_output_codec": "null",
+        "ROI": false,
+        "ROI_Coordinates": "0,0,1,1",
+        "name": "VideoOutput"
+      }
+    },
+    {
+      "name": "TextStream",
+      "type": "TextStream",
+      "connections": [],
+      "layout_grid": {
+        "x": 5,
+        "y": 14,
+        "w": 3,
+        "h": 10
+      },
+      "layout_node": {
+        "x": 786,
+        "y": 67
+      },
+      "text_color": "white",
+      "partial_color": "dodgerblue",
+      "delta_color": "limegreen",
+      "init_kwargs": {}
+    },
+    {
+      "name": "VideoSource",
+      "type": "VideoSource",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "RateLimit",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 30.88888888888889,
+        "y": 312.77777777777777
+      },
+      "init_kwargs": {
+        "video_input": "/data/videos/demo/Door_RAG_advan.MOV",
+        "video_input_width": 480,
+        "video_input_height": 640,
+        "video_input_codec": "null",
+        "loops": -1,
+        "num_buffers": 120,
+        "return_copy": true,
+        "return_tensors": "cuda",
+        "name": "VideoSource"
+      }
+    }
+  ]
+}

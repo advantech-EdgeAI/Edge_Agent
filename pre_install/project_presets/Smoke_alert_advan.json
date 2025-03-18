@@ -1,0 +1,336 @@
+{
+  "version": "24.7",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 14
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 14,
+        "w": 8,
+        "h": 6
+      }
+    },
+    "NanoLLM_ICL": {
+      "layout_grid": {}
+    },
+    "VideoOutput": {
+      "layout_grid": {}
+    }
+  },
+  "plugins": [
+    {
+      "name": "NanoLLM_ICL",
+      "type": "NanoLLM_ICL",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 1
+        },
+        {
+          "to": "TextStream",
+          "input": 0,
+          "output": 2
+        },
+        {
+          "to": "One_Step_Alert",
+          "input": 0,
+          "output": 2
+        },
+        {
+          "to": "WebClient",
+          "input": 0,
+          "output": 4
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 14
+      },
+      "layout_node": {
+        "x": 1245,
+        "y": 43
+      },
+      "max_new_tokens": 128,
+      "min_new_tokens": -1,
+      "do_sample": false,
+      "temperature": 0.7,
+      "top_p": 0.95,
+      "repetition_penalty": 1.0,
+      "drop_inputs": true,
+      "system_prompt": "You are a helpful and friendly AI assistant.",
+      "model": "Efficient-Large-Model/Llama-3-VILA1.5-8B",
+      "init_kwargs": {
+        "model": "Efficient-Large-Model/Llama-3-VILA1.5-8B",
+        "api": "MLC",
+        "quantization": "q4f16_ft",
+        "drop_inputs": true,
+        "chat_template": "llama-3",
+        "name": "NanoLLM_ICL"
+      }
+    },
+    {
+      "name": "RateLimit",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "AutoPrompt_ICL",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 805.5,
+        "y": 30.75
+      },
+      "rate": 15.0,
+      "chunk": null,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 15.0,
+        "drop_inputs": true,
+        "on_demand": true,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "VideoOverlay",
+      "type": "VideoOverlay",
+      "connections": [
+        {
+          "to": "VideoOutput",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1415.25,
+        "y": 305
+      },
+      "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+      "font_size": 32.0,
+      "prefix_text": null,
+      "color": "#78d715",
+      "background": "#000000",
+      "opacity": 0.4,
+      "x": 5,
+      "y": 5,
+      "line_spacing": 38,
+      "line_length": null,
+      "return_copy": true,
+      "init_kwargs": {
+        "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "font_size": 32.0,
+        "color": "#78d715",
+        "background": "#000000",
+        "opacity": 0.4,
+        "x": 5,
+        "y": 5,
+        "line_spacing": 38,
+        "return_copy": true,
+        "name": "VideoOverlay"
+      }
+    },
+    {
+      "name": "AutoPrompt_ICL",
+      "type": "AutoPrompt_ICL",
+      "connections": [
+        {
+          "to": "NanoLLM_ICL",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1021,
+        "y": 47.5
+      },
+      "template": "<reset><image><image><image>Does the image show any smoke ?Return \"Yes\" if you see any, or \"No\" if there is no visible smoke.",
+      "seq_replace_mode": true,
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "init_kwargs": {
+        "template": "<reset><image> Describe the image concisely.",
+        "seq_replace_mode": true,
+        "name": "AutoPrompt_ICL"
+      }
+    },
+    {
+      "name": "TextStream",
+      "type": "TextStream",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 14,
+        "w": 4,
+        "h": 6
+      },
+      "layout_node": {
+        "x": 1513.5234375,
+        "y": 118.09375
+      },
+      "text_color": "white",
+      "partial_color": "dodgerblue",
+      "delta_color": "limegreen",
+      "init_kwargs": {}
+    },
+    {
+      "name": "PiperTTS",
+      "type": "PiperTTS",
+      "connections": [
+        {
+          "to": "RateLimit_1",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1283,
+        "y": -104
+      },
+      "voice": "en_US-libritts-high",
+      "speaker": "p339",
+      "rate": 1,
+      "buffering": [
+        "punctuation"
+      ],
+      "init_kwargs": {
+        "voice": "en_US-libritts-high",
+        "voice_rate": 1.0,
+        "voice_speaker": "p339",
+        "sample_rate_hz": 22050,
+        "model_cache": "/data/models/piper",
+        "name": "PiperTTS"
+      }
+    },
+    {
+      "name": "RateLimit_1",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "WebAudioOut",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1498,
+        "y": -108
+      },
+      "rate": 1.0,
+      "chunk": 4800,
+      "drop_inputs": false,
+      "init_kwargs": {
+        "rate": 1.0,
+        "chunk": 4800,
+        "drop_inputs": false,
+        "on_demand": false,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "WebAudioOut",
+      "type": "WebAudioOut",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1742,
+        "y": -88
+      },
+      "init_kwargs": {}
+    },
+    {
+      "name": "One_Step_Alert",
+      "type": "One_Step_Alert",
+      "connections": [
+        {
+          "to": "PiperTTS",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1043.909090909091,
+        "y": -119.9090909090909
+      },
+      "check_time": 5,
+      "alert_keyword": "yes",
+      "normal_keyword": "no",
+      "warning_message_text": "Warning: The smoke is rising.",
+      "alert": true,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "check_time": 5,
+        "alert": true,
+        "alert_keyword": "yes",
+        "normal_keyword": "no",
+        "warning_message_text": "Warning: The smoke is rising.",
+        "drop_inputs": true,
+        "name": "One_Step_Alert"
+      }
+    },
+    {
+      "name": "VideoSource",
+      "type": "VideoSource",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "RateLimit",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 497,
+        "y": 98
+      },
+      "init_kwargs": {
+        "video_input": "/data/videos/demo/Smoke_advan.mp4",
+        "video_input_width": 640,
+        "video_input_height": 480,
+        "loops": -1,
+        "return_copy": true,
+        "return_tensors": "cuda",
+        "name": "VideoSource"
+      }
+    },
+    {
+      "name": "VideoOutput",
+      "type": "VideoOutput",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1677,
+        "y": 326
+      },
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "init_kwargs": {
+        "video_output": "display://",
+        "ROI": false,
+        "ROI_Coordinates": "0,0,1,1",
+        "name": "VideoOutput"
+      }
+    }
+  ]
+}

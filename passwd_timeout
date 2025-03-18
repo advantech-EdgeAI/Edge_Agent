@@ -1,0 +1,2 @@
+# avoid sudo timeout while installation, set it to 3 hrs (3*60*60) by default
+Defaults	timestamp_timeout=10800 

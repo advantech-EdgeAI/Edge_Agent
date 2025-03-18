@@ -1,0 +1,39 @@
+{
+    "model": "owlv2",
+    "MainObject": {
+        "person": {
+            "conf": 0.15,
+            "minArea": 10000
+        }
+    },
+    "Prompts": {
+        "helmet": {
+            "abbr": "helmet",
+            "conf": 0.3,
+            "minArea": 2000
+        },
+        "safety vest": {
+            "abbr": "safety vest",
+            "conf": 0.3,
+            "minArea": 2000
+        }
+    },
+    "Compl": [
+        "sandals",
+        "slipper",
+        "socks",
+        "plam"
+    ],
+    "Camera": 0,
+    "CheckPeriod": 5,
+    "ValidChunkSize": 3,
+    "ValidRatio": 0.5,
+    "OKWaiting": 5,
+    "NGWaiting": 5,
+    "ROI": [
+        0.4,
+        0.05,
+        0.75,
+        1.0
+    ]
+}

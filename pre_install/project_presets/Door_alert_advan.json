@@ -1,0 +1,456 @@
+{
+  "version": "24.7",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 14
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 14,
+        "w": 8,
+        "h": 6
+      }
+    },
+    "TextStream": {
+      "layout_grid": {
+        "x": 8,
+        "y": 14,
+        "w": 4,
+        "h": 6
+      }
+    },
+    "NanoLLM_ICL": {
+      "layout_grid": {}
+    },
+    "NanoDB_Fashion": {
+      "layout_grid": {}
+    },
+    "VideoOutput": {
+      "layout_grid": {}
+    },
+    "AutoPrompt_ICL_1": {
+      "layout_node": {
+        "x": 1227,
+        "y": 539
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "PiperTTS",
+      "type": "PiperTTS",
+      "connections": [
+        {
+          "to": "RateLimit",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1168,
+        "y": 106
+      },
+      "voice": "en_US-libritts-high",
+      "speaker": "p339",
+      "rate": 1,
+      "buffering": [
+        "punctuation"
+      ],
+      "init_kwargs": {
+        "voice": "en_US-libritts-high",
+        "voice_rate": 1.0,
+        "voice_speaker": "p339",
+        "sample_rate_hz": 22050,
+        "model_cache": "/data/models/piper",
+        "name": "PiperTTS"
+      }
+    },
+    {
+      "name": "RateLimit",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "WebAudioOut",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1383,
+        "y": 101
+      },
+      "rate": 1.0,
+      "chunk": 4800,
+      "drop_inputs": false,
+      "init_kwargs": {
+        "rate": 1.0,
+        "chunk": 4800,
+        "drop_inputs": false,
+        "on_demand": false,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "WebAudioOut",
+      "type": "WebAudioOut",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1590,
+        "y": 114
+      },
+      "init_kwargs": {}
+    },
+    {
+      "name": "RateLimit_1",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "AutoPrompt_ICL",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 605,
+        "y": 317
+      },
+      "rate": 1.0,
+      "chunk": null,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 1.0,
+        "drop_inputs": true,
+        "on_demand": true,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "AutoPrompt_ICL",
+      "type": "AutoPrompt_ICL",
+      "connections": [
+        {
+          "to": "NanoLLM_ICL",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 901,
+        "y": 326
+      },
+      "template": "<reset><image>Check the current status of the door. Is it open or closed?",
+      "seq_replace_mode": true,
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "init_kwargs": {
+        "template": "<reset><image>Check the current status of the door. Is it opened or closed?",
+        "name": "AutoPrompt_ICL"
+      }
+    },
+    {
+      "name": "RateLimit_2",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "AutoPrompt_ICL_1",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 896,
+        "y": 526
+      },
+      "rate": 1.0,
+      "chunk": null,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 1.0,
+        "drop_inputs": true,
+        "on_demand": true,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "VideoOverlay",
+      "type": "VideoOverlay",
+      "connections": [
+        {
+          "to": "VideoOutput",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1382.3333333333333,
+        "y": 433
+      },
+      "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+      "font_size": 32.0,
+      "prefix_text": null,
+      "color": "#78d715",
+      "background": "#000000",
+      "opacity": 0.4,
+      "x": 5,
+      "y": 5,
+      "line_spacing": 38,
+      "line_length": null,
+      "return_copy": true,
+      "init_kwargs": {
+        "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "font_size": 32.0,
+        "color": "#78d715",
+        "background": "#000000",
+        "opacity": 0.4,
+        "x": 5,
+        "y": 5,
+        "line_spacing": 38,
+        "return_copy": true,
+        "name": "VideoOverlay"
+      }
+    },
+    {
+      "name": "NanoLLM_ICL",
+      "type": "NanoLLM_ICL",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 1
+        },
+        {
+          "to": "Two_Steps_Alert",
+          "input": 0,
+          "output": 2
+        },
+        {
+          "to": "AutoPrompt_ICL_1",
+          "input": 0,
+          "output": 2
+        },
+        {
+          "to": "WebClient",
+          "input": 0,
+          "output": 4
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 14
+      },
+      "layout_node": {
+        "x": 1130,
+        "y": 244
+      },
+      "max_new_tokens": 128,
+      "min_new_tokens": -1,
+      "do_sample": false,
+      "temperature": 0.7,
+      "top_p": 0.95,
+      "repetition_penalty": 1.0,
+      "drop_inputs": true,
+      "system_prompt": "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions.",
+      "model": "Efficient-Large-Model/VILA1.5-3b",
+      "init_kwargs": {
+        "model": "Efficient-Large-Model/VILA1.5-3b",
+        "api": "MLC",
+        "quantization": "q4f16_ft",
+        "max_context_len": 256,
+        "drop_inputs": true,
+        "chat_template": "llava-v1",
+        "name": "NanoLLM_ICL"
+      }
+    },
+    {
+      "name": "Two_Steps_Alert",
+      "type": "Two_Steps_Alert",
+      "connections": [
+        {
+          "to": "PiperTTS",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 955,
+        "y": 110
+      },
+      "first_check": 5,
+      "second_check": 1,
+      "alert_keyword": "open",
+      "normal_keyword": "close",
+      "warning_message_text": "Warning, The door is opened.",
+      "alert": true,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "first_check": 10,
+        "second_check": 5,
+        "alert": true,
+        "alert_keyword": "open",
+        "normal_keyword": "close",
+        "warning_message_text": "Warning, The door is opened.",
+        "drop_inputs": true,
+        "name": "Two_Steps_Alert"
+      }
+    },
+    {
+      "name": "Save_Pics",
+      "type": "Save_Pics",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1514,
+        "y": 555
+      },
+      "check_time": 1,
+      "save_frames": 3,
+      "save_pics_folder": "/data/nanodb/images",
+      "alert_keyword": "open",
+      "alert": true,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "check_time": 1,
+        "save_frames": 3,
+        "save_pics_folder": "/data/nanodb/test/imgs/",
+        "alert": true,
+        "alert_keyword": "open",
+        "drop_inputs": true,
+        "name": "Save_Pics"
+      }
+    },
+    {
+      "name": "VideoSource",
+      "type": "VideoSource",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "RateLimit_1",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "RateLimit_2",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 417.3333333333333,
+        "y": 418
+      },
+      "init_kwargs": {
+        "video_input": "/data/videos/demo/Door_advan.mkv",
+        "video_input_width": 640,
+        "video_input_height": 480,
+        "loops": -1,
+        "return_copy": true,
+        "return_tensors": "cuda",
+        "name": "VideoSource"
+      }
+    },
+    {
+      "name": "NanoDB_Fashion",
+      "type": "NanoDB_Fashion",
+      "connections": [
+        {
+          "to": "WebClient",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 14,
+        "w": 4,
+        "h": 10
+      },
+      "layout_node": {
+        "x": 1532,
+        "y": 256.3333333333333
+      },
+      "top_k": 5,
+      "search_time": "2024/11/14",
+      "rag_sample_size": 0,
+      "rag_threshold": 90.0,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "path": "/data/nanodb/images",
+        "model": "patrickjohncyh/fashion-clip",
+        "dtype": "float16",
+        "reserve": 1024,
+        "top_k": 5,
+        "crop": true,
+        "drop_inputs": true,
+        "search_time": "2024/11/14",
+        "name": "NanoDB_Fashion"
+      }
+    },
+    {
+      "name": "AutoPrompt_ICL_1",
+      "type": "AutoPrompt_ICL",
+      "connections": [
+        {
+          "to": "Save_Pics",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1230,
+        "y": 541
+      },
+      "template": "<text><image>",
+      "seq_replace_mode": false,
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "init_kwargs": {
+        "template": "<text><image>",
+        "seq_replace_mode": false,
+        "ROI": false,
+        "ROI_Coordinates": "0,0,1,1",
+        "name": "AutoPrompt_ICL"
+      }
+    },
+    {
+      "name": "VideoOutput",
+      "type": "VideoOutput",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1627,
+        "y": 450
+      },
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "init_kwargs": {
+        "video_output": "display://0",
+        "video_output_codec": "null",
+        "ROI": false,
+        "ROI_Coordinates": "0,0,1,1",
+        "name": "VideoOutput"
+      }
+    }
+  ]
+}
