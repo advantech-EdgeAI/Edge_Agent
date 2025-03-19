@@ -17,7 +17,7 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 
 # Edge Agent Installation 
 
-💡💡💡 **ONLY Verified Pass on JetPack6.0**
+‼️ ***ONLY Verified Pass on JetPack6.0***
 
 ## System Requirements
 
@@ -30,26 +30,25 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 | Internet        | Required during installation                          |
 
 ## 1. Docker Service Installation 
-> 💡 From JetPack 6, SDK Manager does not install docker service by default.
+Starting from JetPack 6, the SDK Manager does not install Docker service by default.
 
 ### Checking on Docker Service
-Check the version of docker to ensure your system has docker service installed properly.
+Check the Docker version to ensure that the Docker service is installed and running properly on your system:
 
 ```bash
 docker --version
 ```
 
-### If docker is not available, run following script to enable it on your JP 6 device.
+If Docker is not available, run the following script to install and enable it on your JetPack 6 device:
 
 ```bash
 bash init-dockerd-jetson-jp6.sh
 ```
 
 ##  2. (Optional) Setup Extended Storage - NVMe SSD
-> 💡💡💡 **If your rootfs(/) has free storage > 60GB, you could skip this step and jump to "Download Essential Data" Section.**
->
+🔔 If your root filesystem (`/`) has more than 60GB of free storage, you can skip this step and proceed to the 'Download Essential Data' section.
 
-### Physical installation
+### Physical Installation
 1. Power off your Jetson device and disconnect peripherals.
 2. Insert the NVMe SSD into the carrier board, ensuring it's properly seated and secured.
 3. Reconnect peripherals and power on the device.
@@ -58,19 +57,21 @@ bash init-dockerd-jetson-jp6.sh
    ```bash
    lspci
    ```
->   You should see an entry similar to:
->   0007:01:00.0 Non-Volatile memory controller: Marvell Technology Group Ltd. Device 1322 (rev 02)
-> 
 
-### Make ext4 FS on SSD and Mount it on /ssd by default
- - Find the "Format and set up auto-mount" Section in [Link](https://www.jetson-ai-lab.com/tips_ssd-docker.html)
+   You should see an entry similar to:
+   ```
+   0007:01:00.0 Non-Volatile memory controller: Marvell Technology Group Ltd. Device 1322 (rev 02)
+   ```
 
-### Migrate Docker Directory SSD
- - Find the "Migrate Docker Directory SSD" Section in [Link](https://www.jetson-ai-lab.com/tips_ssd-docker.html)
+### Create ext4 Filesystem on SSD and Mount it to `/ssd` by Default
+ - Follow the 'Format and Set Up Auto-Mount' section in this [link](https://www.jetson-ai-lab.com/tips_ssd-docker.html#format-and-set-up-auto-mount).
 
->  At this stage, you have installed Docker and an SSD on your device and set the SSD as the default storage location for Docker images.
+### Migrate Docker Directory to SSD
+ - Follow the 'Migrate Docker Directory SSD' section in this [link](https://www.jetson-ai-lab.com/tips_ssd-docker.html#migrate-docker-directory-to-ssd).
 
-### ☕ Verifying new installed SSD
+🔔 At this stage, you have installed Docker and an SSD on your device and set the SSD as the default storage location for Docker images.
+
+### Verifying Newly Installed SSD
 
  You can follow these optional steps to verify that the SSD is configured correctly for Docker images and disable Apport reporting:
 
@@ -79,7 +80,7 @@ bash init-dockerd-jetson-jp6.sh
 
 ## 3. Download Essential Data
 
->  💡 Run following script to download docker images and necessary packages.
+Run the following script to download Docker images and the necessary packages:
 
 ```bash
 bash download-EA-JC-2ssd.sh
@@ -87,27 +88,25 @@ bash download-EA-JC-2ssd.sh
 
 ## 4. Start Edge Agent
 
-> 💡 Edge Agent starts up and backend listen on port 8050 on localhost
+Start the Edge Agent, and the backend will listen on port 8050 on localhost:
 
 ```bash
 bash startEA.sh
 ```
 
-## 5. Start working on Edge Agent through WEB UI
+## 5. Start Working on Edge Agent Through Web UI
 
-> 💡 Once Edge Agent start up successfully, open another terminal to launch web browser (Chromium) 
+Once the Edge Agent starts up successfully, open another terminal to launch the web browser (Chromium):
 
 ```bash
 bash launch-chromium.sh
 ```
 
+🔔 At this stage, you should have successfully started the Edge Agent and accessed it via Chromium. You can also start the service by following the steps in the next section.
 
+## (Optional) Start Edge Agent Manually
 
-
-
-## (Optional) Start Edge Agent manually
-
-> **Start Edge Agent container without HuggingFace token:**
+Start the Edge Agent container without the HuggingFace token:
 
    ```bash
    sudo jetson-containers run \
@@ -118,12 +117,14 @@ bash launch-chromium.sh
    ispsae/nano_llm:24.7-r36.2.0_bug_fixed \
    python3 -m nano_llm.studio
    ```
-> **Or start it with the HuggingFace token:**
 
-##### Register on HuggingFace - Sign up at HuggingFace and obtain an access token (Settings section).
+Or start it with the HuggingFace token:
 
-* Remember to replace the HUGGINGFACE_TOKEN value with yours
-![](./images/media/image3.png)
+1. Register on HuggingFace - Sign up on HuggingFace and obtain an access token (in the Settings section).
+
+   ![](./images/media/image3.png)
+
+   *Remember to replace the HUGGINGFACE_TOKEN value with your own.*
 
    ```bash
    sudo jetson-containers run --env HUGGINGFACE_TOKEN=hf_xyz123abc456 \
@@ -135,11 +136,9 @@ bash launch-chromium.sh
    python3 -m nano_llm.studio
    ```
 
-Once the server starts on your device, open a browser(Chromium) and navigate to https://IP_ADDRESS:8050 (Note: Do NOT use Firefox).
+2. Once the service starts on your device, open a browser (Chromium) and navigate to https://IP_ADDRESS:8050 (Note: Do NOT use Firefox).
 
-
-
-### Here are a few important notes:
+Here are a few important notes:
 
 - Use the `--load` option to load your prebuilt pipeline before starting.
 - If the program crashes, it will automatically restore the most recent pipeline you created.
@@ -151,7 +150,7 @@ Alternatively, you can visit https://IP_ADDRESS:8050/reload in your browser. Aft
 
 ![](./images/media/image4.png)
 
-## 📌 FAQ
+## FAQ
 
 We maintain frequently asked questions as GitHub Issues. This allows for better tracking, discussions, and updates.
 
