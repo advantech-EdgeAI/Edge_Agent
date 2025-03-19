@@ -19,6 +19,10 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 
 ‼️ ***ONLY Verified Pass on JetPack6.0***
 
+🔔 Watch the video tutorial by clicking the GIF below.
+
+<a href="https://www.youtube.com/watch?v=zty0kBugyQs"><img src="./images/media/install_tutorial.gif"></a>
+
 ## System Requirements
 
 | Name            | Description                                           |
