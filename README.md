@@ -17,6 +17,8 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 
 # Edge Agent Installation 
 
+💡💡💡 **ONLY Verified Pass on JetPack6.0**
+
 ## System Requirements
 
 | Name            | Description                                           |
@@ -32,33 +34,33 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 
 ### Checking on Docker Service
 Check the version of docker to ensure your system has docker service installed properly.
-```
+
+```bash
 docker --version
 ```
 
 ### If docker is not available, run following script to enable it on your JP 6 device.
 
-```
+```bash
 bash init-dockerd-jetson-jp6.sh
 ```
 
 ##  2. (Optional) Setup Extended Storage - NVMe SSD
-> 💡💡💡 
+> 💡💡💡 **If your rootfs(/) has free storage > 60GB, you could skip this step and jump to "Download Essential Data" Section.**
 >
-> **If your rootfs(/) has free storage > 60GB, you could skip this step and jump to "Download Essential Data" Section.**
 
 ### Physical installation
 1. Power off your Jetson device and disconnect peripherals.
 2. Insert the NVMe SSD into the carrier board, ensuring it's properly seated and secured.
 3. Reconnect peripherals and power on the device.
 4. Verify the SSD is recognized by running:
-   ```
+
+   ```bash
    lspci
    ```
-   You should see an entry similar to:
-   ```
-   0007:01:00.0 Non-Volatile memory controller: Marvell Technology Group Ltd. Device 1322 (rev 02)
-   ```
+>   You should see an entry similar to:
+>   0007:01:00.0 Non-Volatile memory controller: Marvell Technology Group Ltd. Device 1322 (rev 02)
+> 
 
 ### Make ext4 FS on SSD and Mount it on /ssd by default
  - Find the "Format and set up auto-mount" Section in [Link](https://www.jetson-ai-lab.com/tips_ssd-docker.html)
@@ -79,7 +81,7 @@ bash init-dockerd-jetson-jp6.sh
 
 >  💡 Run following script to download docker images and necessary packages.
 
-```
+```bash
 bash download-EA-JC-2ssd.sh
 ```
 
@@ -87,7 +89,7 @@ bash download-EA-JC-2ssd.sh
 
 > 💡 Edge Agent starts up and backend listen on port 8050 on localhost
 
-```
+```bash
 bash startEA.sh
 ```
 
@@ -95,7 +97,7 @@ bash startEA.sh
 
 > 💡 Once Edge Agent start up successfully, open another terminal to launch web browser (Chromium) 
 
-```
+```bash
 bash launch-chromium.sh
 ```
 
@@ -107,7 +109,7 @@ bash launch-chromium.sh
 
 > **Start Edge Agent container without HuggingFace token:**
 
-   ```
+   ```bash
    sudo jetson-containers run \
    -v /etc/machine-id:/etc/machine-id \
    -v /:/dummy_root:ro \
@@ -122,7 +124,8 @@ bash launch-chromium.sh
 
 * Remember to replace the HUGGINGFACE_TOKEN value with yours
 ![](./images/media/image3.png)
-   ```
+
+   ```bash
    sudo jetson-containers run --env HUGGINGFACE_TOKEN=hf_xyz123abc456 \
    -v /etc/machine-id:/etc/machine-id \
    -v /:/dummy_root:ro \

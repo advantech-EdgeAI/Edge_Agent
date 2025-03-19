@@ -1,8 +1,15 @@
 #!/bin/bash
 
 ## Please run this shell in edge_agent/
-PWD=$(pwd)
-echo "The current working folder is $PWD"
+WD=$(pwd)
+echo "The current working folder is $WD"
+
+START_EDGE_AGENT=$WD/startEA.sh
+if [ ! -f $START_EDGE_AGENT ];
+then
+    echo "MUST run this script in edge_agent folder."
+    exit 1
+fi
 
 # Clone Jetson-containers and install:
 SSD=/ssd
@@ -21,8 +28,8 @@ then
 fi
 
 # copy owlv2 tensorrt model to target folder
-PRE_INSD=$PWD/pre_install
-OWLRT=$PWD/nanoowl/data/owlv2.engine
+PRE_INSD=$WD/pre_install
+OWLRT=$WD/nanoowl/data/owlv2.engine
 if [ ! -f $OWLRT ];
 then
     sudo docker run --name share-volume00-container ispsae/share-volume00
