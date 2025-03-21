@@ -29,9 +29,9 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 | USB Camera      | Logitech c270 HD webcam or any V4L2 compatible camera |
 | Internet        | Required during installation                          |
 
-## Short Video Tutorial
+## Short Video Installation Guide
 
-Our short video tutorial walks through the steps for installaion and configuration.
+Our short video tutorial walks you through the steps for installation and configuration. Click it to learn more.
 
 <a href="https://www.youtube.com/watch?v=zty0kBugyQs"><img src="./images/media/install_tutorial.gif"></a>
 
