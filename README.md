@@ -59,7 +59,8 @@ bash init-dockerd-jetson-jp6.sh
 
 ##  2. (Optional) Setup Extended Storage - NVMe SSD
 🔔 *If your root filesystem (`/`) has more than 200 GB of free storage, you can skip this step and proceed to the 'Download Essential Data' section.*
-⚠️ *There might be a redandant file existed on your Advantech platform, trying to remove it to avoid your system enters emergency mode after rebooting*
+
+> ⚠️ *There might be a redundant file existed on your Advantech platform, trying to remove it to avoid your system enters emergency mode after rebooting*
 ```sh
 sudo rm -rf /etc/udev/rules.d/70-nvme.rules
 ```
