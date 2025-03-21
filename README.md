@@ -19,10 +19,6 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 
 ‼️ ***ONLY Verified Pass on JetPack6.0***
 
-🔔 Watch the video tutorial by clicking the GIF below.
-
-<a href="https://www.youtube.com/watch?v=zty0kBugyQs"><img src="./images/media/install_tutorial.gif"></a>
-
 ## System Requirements
 
 | Name            | Description                                           |
@@ -32,6 +28,20 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 | Storage         | 512GB NVMe SSD (recommended)                          |
 | USB Camera      | Logitech c270 HD webcam or any V4L2 compatible camera |
 | Internet        | Required during installation                          |
+
+## Short Video Tutorial
+
+Our short video tutorial walks through the steps for installaion and configuration.
+
+<a href="https://www.youtube.com/watch?v=zty0kBugyQs"><img src="./images/media/install_tutorial.gif"></a>
+
+## 0. Clone this Repository
+
+Clone this repository to your Jetpack 6 device:
+
+```sh
+git clone https://github.com/advantech-EdgeAI/edge_agent.git
+```
 
 ## 1. Docker Service Installation 
 Starting from JetPack 6, the SDK Manager does not install Docker service by default.
@@ -50,7 +60,7 @@ bash init-dockerd-jetson-jp6.sh
 ```
 
 ##  2. (Optional) Setup Extended Storage - NVMe SSD
-🔔 If your root filesystem (`/`) has more than 60GB of free storage, you can skip this step and proceed to the 'Download Essential Data' section.
+🔔 *If your root filesystem (`/`) has more than 200 GB of free storage, you can skip this step and proceed to the 'Download Essential Data' section.*
 
 ### Physical Installation
 1. Power off your Jetson device and disconnect peripherals.
@@ -73,11 +83,9 @@ bash init-dockerd-jetson-jp6.sh
 ### Migrate Docker Directory to SSD
  - Follow the 'Migrate Docker Directory SSD' section in this [link](https://www.jetson-ai-lab.com/tips_ssd-docker.html#migrate-docker-directory-to-ssd).
 
-🔔 At this stage, you have installed Docker and an SSD on your device and set the SSD as the default storage location for Docker images.
-
 ### Verifying Newly Installed SSD
 
- You can follow these optional steps to verify that the SSD is configured correctly for Docker images and disable Apport reporting:
+ You can follow these ***optional*** steps to verify that the SSD is configured correctly for Docker images and disable Apport reporting:
 
 - [Test Docker on SSD](https://github.com/advantech-EdgeAI/edge_agent/wiki/Test-Docker-on-SSD)
 - [Disable Apport Reporting](https://github.com/advantech-EdgeAI/edge_agent/wiki/Disable-Apport-Reporting)
@@ -106,7 +114,7 @@ Once the Edge Agent starts up successfully, open another terminal to launch the 
 bash launch-chromium.sh
 ```
 
-🔔 At this stage, you should have successfully started the Edge Agent and accessed it via Chromium. You can also start the service by following the steps in the next section.
+At this stage, you should have successfully started the Edge Agent and accessed it via Chromium. You can also start the service by following the steps in the next section.
 
 ## (Optional) Start Edge Agent Manually
 
