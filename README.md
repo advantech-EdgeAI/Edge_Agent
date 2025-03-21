@@ -59,6 +59,10 @@ bash init-dockerd-jetson-jp6.sh
 
 ##  2. (Optional) Setup Extended Storage - NVMe SSD
 🔔 *If your root filesystem (`/`) has more than 200 GB of free storage, you can skip this step and proceed to the 'Download Essential Data' section.*
+⚠️ *There might be a redandant file existed on your Advantech platform, trying to remove it to avoid your system enters emergency mode after rebooting*
+```sh
+sudo rm -rf /etc/udev/rules.d/70-nvme.rules
+```
 
 ### Physical Installation
 1. Power off your Jetson device and disconnect peripherals.
@@ -81,11 +85,6 @@ bash init-dockerd-jetson-jp6.sh
 ### Migrate Docker Directory to SSD
  - Follow the 'Migrate Docker Directory SSD' section in this [link](https://www.jetson-ai-lab.com/tips_ssd-docker.html#migrate-docker-directory-to-ssd).
 
-🔔 *If your system enters emergency mode after rebooting, try resolving the issue by removing the following file:*
-
-```sh
-sudo rm -rf /etc/udev/rules.d/70-nvme.rules
-```
 
 ### Verifying Newly Installed SSD
 
