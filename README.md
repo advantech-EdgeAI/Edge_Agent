@@ -15,6 +15,8 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 
 > 💡Learn more about [Practical Examples](https://github.com/advantech-EdgeAI/edge_agent/wiki#practical-examples) of using Edge Agent in wiki.
 
+> 💡Watch a quick intro video [here](https://www.youtube.com/watch?v=P6T5xecStjk).
+
 # Edge Agent Installation 
 
 ## System Requirements
