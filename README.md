@@ -17,14 +17,12 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 
 # Edge Agent Installation 
 
-‼️ ***ONLY Verified Pass on JetPack6.0***
-
 ## System Requirements
 
 | Name            | Description                                           |
 |-----------------|-------------------------------------------------------|
 | Product         | MIC-733-AO5A1 (32GB) / MIC-733-AO6A1 (64GB)           |
-| JetPack Version | V6.0GA                                                |
+| JetPack Version | ⚠️ V6.0GA (***ONLY Verified on JetPack6.0***)         |
 | Storage         | 512GB NVMe SSD (recommended)                          |
 | USB Camera      | Logitech c270 HD webcam or any V4L2 compatible camera |
 | Internet        | Required during installation                          |
@@ -37,7 +35,7 @@ Our short video tutorial walks through the steps for installaion and configurati
 
 ## 0. Clone this Repository
 
-Clone this repository to your Jetpack 6 device:
+Clone this repository to your JetPack 6 device:
 
 ```sh
 git clone https://github.com/advantech-EdgeAI/edge_agent.git
@@ -82,6 +80,12 @@ bash init-dockerd-jetson-jp6.sh
 
 ### Migrate Docker Directory to SSD
  - Follow the 'Migrate Docker Directory SSD' section in this [link](https://www.jetson-ai-lab.com/tips_ssd-docker.html#migrate-docker-directory-to-ssd).
+
+🔔 *If your system enters emergency mode after rebooting, try resolving the issue by removing the following file:*
+
+```sh
+sudo rm -rf /etc/udev/rules.d/70-nvme.rules
+```
 
 ### Verifying Newly Installed SSD
 
