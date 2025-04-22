@@ -122,7 +122,7 @@ bash launch-chromium.sh
 
 At this stage, you should have successfully started the Edge Agent and accessed it via Chromium.
 
-## Start a Quick Demo Project
+## 6. Start a Quick Demo Project
 
 Load a preset project for a quick demo. Click to learn more.
 
