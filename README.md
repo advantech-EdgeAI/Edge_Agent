@@ -120,7 +120,13 @@ Once the Edge Agent starts up successfully, open another terminal to launch the 
 bash launch-chromium.sh
 ```
 
-At this stage, you should have successfully started the Edge Agent and accessed it via Chromium. You can also start the service by following the steps in the next section.
+At this stage, you should have successfully started the Edge Agent and accessed it via Chromium.
+
+## Start a Quick Demo Project
+
+Load a preset project for a quick demo. Click to learn more.
+
+<a href="https://www.youtube.com/watch?v=XNr-aNQwoPc"><img src="./images/media/quick_demo.gif"></a>
 
 ## (Optional) Start Edge Agent Manually
 
