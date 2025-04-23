@@ -29,11 +29,13 @@ fi
 
 # copy owlv2 tensorrt model to target folder
 PRE_INSD=$WD/pre_install
-OWLRT=$WD/nanoowl/data/owlv2.engine
+OWL_DATA=$WD/nanoowl/data
+OWLRT=$WD/$OWL_DATA/owlv2.engine
 if [ ! -f $OWLRT ];
 then
     sudo docker run --name share-volume00-container ispsae/share-volume00
     sudo docker cp share-volume00-container:/data/. $PRE_INSD
+    sudo mkdir -p $OWL_DATA
     sudo cp -fa $PRE_INSD/owlv2.engine $OWLRT
 fi
 
