@@ -3851,6 +3851,12 @@ textarea.form-control-lg {
 .nav-link:hover, .nav-link:focus {
   color: var(--bs-nav-link-hover-color);
 }
+
+.no-hover-color:hover,
+.no-hover-color:focus {
+  color: var(--bs-nav-link-color) !important;
+}
+
 .nav-link:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 0.25rem rgba(102, 128, 103, 0.25);
