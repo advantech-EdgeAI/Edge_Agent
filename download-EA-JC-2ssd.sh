@@ -31,7 +31,7 @@ fi
 # copy owlv2 tensorrt model to target folder
 PRE_INSD=$WD/pre_install
 OWL_DATA=$WD/nanoowl/data
-OWLRT=$WD/$OWL_DATA/owlv2.engine
+OWLRT=$OWL_DATA/owlv2.engine
 if [ ! -f $OWLRT ];
 then
     sudo docker run --name share-volume01-container ispsae/share-volume01
