@@ -33,7 +33,7 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 
 Our short video tutorial walks you through the steps for installation and configuration. Click it to learn more.
 
-<a href="https://www.youtube.com/watch?v=zty0kBugyQs"><img src="./images/media/install_tutorial.gif"></a>
+<a href="https://www.youtube.com/watch?v=zIH040_c2yg"><img src="./images/media/install_tutorial_w_SSD.gif"></a>
 
 ## 0. Clone this Repository
 
