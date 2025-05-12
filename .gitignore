@@ -6,6 +6,16 @@ __pycache__/
 # C extensions
 #*.so
 
+# compressed files
+*.zip
+*.7z
+*.tar.gz
+*.tgz
+*.tbz2
+
+# tensorrt model
+*.engine
+
 # Distribution / packaging
 .Python
 build/

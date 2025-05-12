@@ -15,7 +15,7 @@
 
 
 import argparse
-from .owl_predictor import OwlPredictor
+from nanoowl.owl_predictor import OwlPredictor
 
 
 if __name__ == "__main__":

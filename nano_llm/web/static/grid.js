@@ -216,39 +216,85 @@ function scrollBottom(container) {  // https://stackoverflow.com/a/21067431
   //console.log(`scrolling to bottom ${container.scrollTop} ${container.scrollHeight} ${container.clientHeight}`);
 }
 
+// Global object to track listeners
+const stateListenerRegistry = {};
+
+// Modified addTextStreamWidget function
 function addTextStreamWidget(name, id, title, grid_options) {
-  const history_id = `${id}_history`;
-
-  const html = `
-    <div id="${history_id}" class="bg-medium-gray p-2 mb-2" style="font-family: monospace, monospace; font-size: 100%; overflow-y: scroll; flex-grow: 1;"</div>
-  `;
-  
-  let widget = addGridWidget(id, title, html, null, Object.assign({w: 4, h: 6}, grid_options));
-
-  addStateListener(name, function(state_dict) {
-    if( ! ('text' in state_dict) )
-      return;
-    
-    let el_type = 'p';  
-    
-    if( 'delta' in state_dict )
-      el_type = 'span';
-
-    let chc = document.getElementById(history_id);
-    let isScrolledToBottom = chc.scrollHeight - chc.clientHeight <= chc.scrollTop + 1;
-    
-    chc.innerHTML += `
-      <${el_type} style="color: ${state_dict['color']}">${state_dict['text']}</${el_type}>
-    `;
-    
-    if( isScrolledToBottom ) { // autoscroll unless the user has scrolled up
-      scrollBottom(chc);
-    }
-  });
-  
-  return widget;
+ const history_id = `${id}_history`;
+ const html = `
+   <div id="${history_id}" class="bg-medium-gray p-2 mb-2" style="font-family: monospace, monospace; font-size: 100%; overflow-y: scroll; flex-grow: 1;"</div>
+ `;
+ 
+ // Clear old listeners if they exist
+ if (stateListenerRegistry[name]) {
+   // Assuming there is a removeStateListener function
+   // If not, you need to implement it or modify addStateListener logic
+   removeStateListener(name, stateListenerRegistry[name]);
+   delete stateListenerRegistry[name];
+   console.log(`Cleared old listener for ${name}`);
+ }
+ 
+ let widget = addGridWidget(id, title, html, null, Object.assign({w: 4, h: 6}, grid_options));
+ 
+ // Create new listener and save reference
+ const listener = function(state_dict) {
+   if (!('text' in state_dict))
+     return;
+   
+   let el_type = 'p';  
+   
+   if ('delta' in state_dict)
+     el_type = 'span';
+   let chc = document.getElementById(history_id);
+   if (!chc) {
+     console.log(`Element ${history_id} doesn't exist, might have been deleted`);
+     return;
+   }
+   
+   let isScrolledToBottom = chc.scrollHeight - chc.clientHeight <= chc.scrollTop + 1;
+   
+   chc.innerHTML += `
+     <${el_type} style="color: ${state_dict['color']}">${state_dict['text']}</${el_type}>
+   `;
+   
+   if (isScrolledToBottom) { // Auto-scroll unless user has scrolled up
+     scrollBottom(chc);
+   }
+ };
+ 
+ // Register listener and save reference
+ addStateListener(name, listener);
+ stateListenerRegistry[name] = listener;
+ 
+ // Clear listener when widget is removed
+ widget.onRemove = function() {
+   if (stateListenerRegistry[name]) {
+     removeStateListener(name, stateListenerRegistry[name]);
+     delete stateListenerRegistry[name];
+     console.log(`Cleared listener for ${name} when widget ${id} was removed`);
+   }
+ };
+ 
+ return widget;
 }
 
+// If you don't have a removeStateListener function, you can implement it like this
+function removeStateListener(name, listener) {
+ // Implementation depends on how your addStateListener works
+ // This is just an example
+ if (typeof window.stateListeners === 'undefined') {
+   window.stateListeners = {};
+ }
+ 
+ if (window.stateListeners[name]) {
+   const index = window.stateListeners[name].indexOf(listener);
+   if (index !== -1) {
+     window.stateListeners[name].splice(index, 1);
+     console.log(`Removed listener from ${name}`);
+   }
+ }
+}
 function terminalTextColor(level) {
     if( level == 'success' ) return 'limegreen';
     else if( level == 'error' ) return 'red';
@@ -466,7 +512,7 @@ function addNanoDBWidget(name, id, title, grid_options) {
     
     <div style="margin-bottom: 15px;"> 
       <label for="${input_id}" style="display: block; margin-bottom: 5px; font-weight: bold; color: #eeeeee;">
-        Search by Vision
+        Search by vision
       </label>
       <div class="input-group">
         <input id="${input_id}" class="form-control" placeholder="Enter a search query"></input>
@@ -622,6 +668,29 @@ function addChatWidget_no_input(name, id, title, grid_options) {
   return widget;
 }
 
+function addChatWidget_no_input_vllm(name, id, title, grid_options) {
+  const history_id = `${id}_history`;
+
+  // Only retain the chat history display area
+  const html = `
+    <div id="${history_id}" class="bg-medium-gray p-2 mb-2" style="font-size: 100%; overflow-y: scroll; flex-grow: 1;" ondrop="onFileDrop(event)" ondragover="onFileDrag(event)"></div>
+  `;
+  
+  // Add the widget to the grid layout with specified options
+  let widget = addGridWidget(id, title, html, null, Object.assign({w: 4, h: 14}, grid_options));
+
+  // Update chat history when new messages arrive
+  addOutputListener(name, 3, function(history) {
+    updateChatHistory(history_id, history);
+  });
+
+  // Send an initial /refresh command to update the chat
+  msg = {};
+  msg[name] = {'input': 'Hello!'};
+  sendWebsocket(msg);
+
+  return widget;
+}
 
 
 function updateChatHistory(id, history) {    
@@ -855,8 +924,10 @@ function addPlugin(plugin) {
   // Check if plugin_name includes the following name.
   if (plugin_name.includes('AutoPrompt_ICL') || plugin_name.includes('NanoLLM_ICL') 
       || plugin_name.includes('NanoDB_Fashion') || plugin_name.includes('OwlVit_detector') 
+      || plugin_name.includes('OpenWord_detector') 
       || plugin_name.includes('One_Step_Alert') || plugin_name.includes('Two_Steps_Alert') 
-      || plugin_name.includes('Save_Pics') || plugin_name.includes("MQTT_Publisher")) {
+      || plugin_name.includes('Save_Pics') || plugin_name.includes("MQTT_Publisher")
+      || plugin_name.includes('VLLM')) {
     // Call customizeNode to adjust the appearance of the small node and big node color
     customizeNode(plugin_name, color = '#add8e6', label = 'Advantech', labelWidth = '80px', labelHeight = '25px', fontSize = '12px');
   }
@@ -883,6 +954,8 @@ function addPluginGridWidget(name, type, title, grid_options) {
       return addChatWidget(name, id, title, grid_options);
     case 'NanoLLM_ICL':
       return addChatWidget_no_input(name, id, title, grid_options);
+    case 'VLLM':
+      return addChatWidget_no_input_vllm(name, id, title, grid_options);
     case 'VideoOutput':
       return addVideoOutputWidget(name, id, title, grid_options);
     case 'NanoDB':

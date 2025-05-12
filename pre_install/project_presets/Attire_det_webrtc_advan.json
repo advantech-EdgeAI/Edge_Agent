@@ -128,7 +128,7 @@
       "type": "RateLimit",
       "connections": [
         {
-          "to": "OwlVit_detector",
+          "to": "OpenWord_detector",
           "input": 0,
           "output": 0
         }
@@ -149,8 +149,8 @@
       }
     },
     {
-      "name": "OwlVit_detector",
-      "type": "OwlVit_detector",
+      "name": "OpenWord_detector",
+      "type": "OpenWord_detector",
       "connections": [
         {
           "to": "PiperTTS",
@@ -168,7 +168,8 @@
         "x": 1088,
         "y": 364
       },
-      "owl_json_path": "/opt/NanoLLM/nanoowl/owl.json",
+      "model": "google/owlv2-base-patch16-ensemble",
+      "json_path": "/opt/NanoLLM/nanoowl/owl.json",
       "drop_inputs": true,
       "activate": true,
       "return_copy": true,
@@ -176,11 +177,12 @@
       "white glove": true,
       "aluminized heat protection apron": true,
       "init_kwargs": {
-        "owl_json_path": "/opt/NanoLLM/nanoowl/owl.json",
+        "model": "google/owlv2-base-patch16-ensemble",
+        "json_path": "/opt/NanoLLM/nanoowl/owl.json",
         "drop_inputs": true,
         "activate": true,
         "return_copy": true,
-        "name": "OwlVit_detector"
+        "name": "OpenWord_detector"
       }
     },
     {

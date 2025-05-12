@@ -55,8 +55,8 @@
         "h": 14
       },
       "layout_node": {
-        "x": 1106.75,
-        "y": 323
+        "x": 1079.2857142857142,
+        "y": 300.7142857142857
       },
       "max_new_tokens": 128,
       "min_new_tokens": -1,
@@ -92,7 +92,7 @@
         "y": 214
       },
       "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-      "font_size": 32.0,
+      "font_size": 32,
       "prefix_text": null,
       "color": "#78d715",
       "background": "#000000",
@@ -104,7 +104,7 @@
       "return_copy": true,
       "init_kwargs": {
         "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-        "font_size": 32.0,
+        "font_size": 32,
         "color": "#78d715",
         "background": "#000000",
         "opacity": 0.4,
@@ -127,14 +127,14 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 610.5,
-        "y": 355
+        "x": 591,
+        "y": 357.57142857142856
       },
-      "rate": 10.0,
+      "rate": 10,
       "chunk": null,
       "drop_inputs": true,
       "init_kwargs": {
-        "rate": 10.0,
+        "rate": 10,
         "drop_inputs": true,
         "on_demand": true,
         "name": "RateLimit"
@@ -163,7 +163,7 @@
       ],
       "init_kwargs": {
         "voice": "en_US-libritts-high",
-        "voice_rate": 1.0,
+        "voice_rate": 1,
         "voice_speaker": "p339",
         "sample_rate_hz": 22050,
         "model_cache": "/data/models/piper",
@@ -185,11 +185,11 @@
         "x": 1519,
         "y": 569.25
       },
-      "rate": 1.0,
+      "rate": 1,
       "chunk": 4800,
       "drop_inputs": false,
       "init_kwargs": {
-        "rate": 1.0,
+        "rate": 1,
         "chunk": 4800,
         "drop_inputs": false,
         "on_demand": false,
@@ -255,8 +255,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 451,
-        "y": 220
+        "x": 420,
+        "y": 218.57142857142858
       },
       "init_kwargs": {
         "video_input": "/data/videos/demo/Forbidden_zone_advan.mp4",
@@ -280,8 +280,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 840.75,
-        "y": 356.5
+        "x": 823,
+        "y": 361
       },
       "template": "<reset>'''/data/images/forbidden_zone/forbidden_zone2.png''' In the above image, there is a red X-shaped area marked with tape on the ground. In the following image, check if any part of the red X shape is obstructed by an object, even partially.\nIn below image: <image> Can you see the entire X shape pattern?",
       "seq_replace_mode": true,
@@ -306,8 +306,8 @@
         "h": 11
       },
       "layout_node": {
-        "x": 1597,
-        "y": 233.25
+        "x": 1604.5,
+        "y": 233
       },
       "ROI": true,
       "ROI_Coordinates": "0.75,0.25,1,0.73",

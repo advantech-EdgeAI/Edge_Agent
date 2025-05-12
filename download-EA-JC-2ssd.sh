@@ -22,6 +22,7 @@ sudo cp -f passwd_timeout /etc/sudoers.d/
 JCI=jetson-containers/install.sh
 if [ ! -f $SSD/$JCI ];
 then
+    # git clone jetson-container onto /ssd
     cd $SSD
     git clone https://github.com/dusty-nv/jetson-containers
     bash $JCI
@@ -33,8 +34,8 @@ OWL_DATA=$WD/nanoowl/data
 OWLRT=$OWL_DATA/owlv2.engine
 if [ ! -f $OWLRT ];
 then
-    sudo docker run --name share-volume00-container ispsae/share-volume00
-    sudo docker cp share-volume00-container:/data/. $PRE_INSD
+    sudo docker run --name share-volume01-container ispsae/share-volume01
+    sudo docker cp share-volume01-container:/data/. $PRE_INSD
     sudo mkdir -p $OWL_DATA
     sudo cp -fa $PRE_INSD/owlv2.engine $OWLRT
 fi
@@ -42,16 +43,14 @@ fi
 
 # then move database and data in edge_agent/pre_install to Jetson-containers folder
 cd $PRE_INSD
-tar xzf demo-videos.tgz --strip-components=1
 cp -far nanodb/ $SSD/jetson-containers/data/
 cp -far forbidden_zone/ $SSD/jetson-containers/data/images/
 cp -far demo/ $SSD/jetson-containers/data/videos/
 
 # Pull the Edge Agent docker images
-echo "docker pull ispsae/nano_llm:24.7-r36.2.0_bug_fixed"
-echo "Please be patient, the download will take some time."
+echo "docker pull ispsae/nano_llm:r36.4.0_bug_fixed"
 echo "..."
-sudo docker pull ispsae/nano_llm:24.7-r36.2.0_bug_fixed
+sudo docker pull ispsae/nano_llm:r36.4.0_bug_fixed
 sudo docker images
 
 # set the sudo password timeout back to default value

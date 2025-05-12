@@ -7,45 +7,25 @@
         }
     },
     "Prompts": {
-        "face shields": {
-            "abbr": "face shields",
-            "conf": 0.3,
-            "minArea": 2000
-        },
-        "white glove": {
-            "abbr": "glove",
-            "conf": 0.2,
-            "minArea": 2000,
-            "pos": "LR"
-        },
-        "aluminized heat protection apron": {
-            "abbr": "protection apron",
-            "conf": 0.2,
-            "minArea": 30000
-        },
-        "black cap toe shoes": {
-            "abbr": "boots",
-            "conf": 0.1,
-            "minArea": 500,
-            "pos": "LR"
+        "a light-blue anti-static jacket": {
+            "abbr": "",
+            "conf": 0.4,
+            "minArea": 1000
         }
     },
     "Compl": [
-        "sandals",
-        "slipper",
-        "socks",
-        "plam"
+        
     ],
     "Camera": 0,
     "CheckPeriod": 5,
-    "ValidChunkSize": 3,
-    "ValidRatio": 0.5,
-    "OKWaiting": 5,
-    "NGWaiting": 10,
+    "ValidChunkSize": 10,
+    "ValidRatio": 0.7,
+    "OKWaiting": 1,
+    "NGWaiting": 1,
     "ROI": [
-        0.4,
-        0.05,
-        0.75,
-        1.0
+        0,
+        0,
+        1,
+        1
     ]
 }
