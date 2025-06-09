@@ -13,7 +13,7 @@ Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid 
 - **Real-Time Sensor Integration**: Connect and interact with live sensors and I/O for real-world applications.
 - **Optimized for Jetson Devices**: Leverage on-device computing and low-latency streaming for enhanced performance.
 
-> 💡Learn more about [Practical Examples](https://github.com/advantech-EdgeAI/edge_agent/wiki#practical-examples) of using Edge Agent in wiki.
+> 💡Learn more about [Preset Projects](https://github.com/advantech-EdgeAI/edge_agent/wiki/03-preset-projects) of using Edge Agent in wiki.
 
 > 💡Watch a quick intro video [here](https://www.youtube.com/watch?v=P6T5xecStjk).
 
@@ -62,10 +62,7 @@ bash init-dockerd-jetson-jp6.sh
 ##  2. (Optional) Setup Extended Storage - NVMe SSD
 🔔 *If your root filesystem (`/`) has more than 200 GB of free storage, you can skip this step and proceed to the 'Download Essential Data' section.*
 
-> ⚠️ *There might be a redundant file existed on your Advantech platform, trying to remove it to avoid your system enters emergency mode after rebooting*
-```sh
-sudo rm -rf /etc/udev/rules.d/70-nvme.rules
-```
+⚠️ [Why does my Advantech device boot into emergency mode, and how can I fix it?](https://github.com/advantech-EdgeAI/edge_agent/issues/8)
 
 ### Physical Installation
 1. Power off your Jetson device and disconnect peripherals.
@@ -89,12 +86,12 @@ sudo rm -rf /etc/udev/rules.d/70-nvme.rules
  - Follow the 'Migrate Docker Directory SSD' section in this [link](https://www.jetson-ai-lab.com/tips_ssd-docker.html#migrate-docker-directory-to-ssd).
 
 
-### Verifying Newly Installed SSD
+### Optional Setup Steps
 
  You can follow these ***optional*** steps to verify that the SSD is configured correctly for Docker images and disable Apport reporting:
 
-- [Test Docker on SSD](https://github.com/advantech-EdgeAI/edge_agent/wiki/Test-Docker-on-SSD)
-- [Disable Apport Reporting](https://github.com/advantech-EdgeAI/edge_agent/wiki/Disable-Apport-Reporting)
+- [Test Docker on SSD](https://github.com/advantech-EdgeAI/edge_agent/issues/5)
+- [Disable Apport Reporting](https://github.com/advantech-EdgeAI/edge_agent/issues/6)
 
 ## 3. Download Essential Data
 
@@ -127,52 +124,6 @@ At this stage, you should have successfully started the Edge Agent and accessed 
 Load a preset project for a quick demo. Click to learn more.
 
 <a href="https://www.youtube.com/watch?v=XNr-aNQwoPc"><img src="./images/media/quick_demo.gif"></a>
-
-## (Optional) Start Edge Agent Manually
-
-Start the Edge Agent container without the HuggingFace token:
-
-   ```bash
-   sudo jetson-containers run \
-   -v /etc/machine-id:/etc/machine-id \
-   -v /:/dummy_root:ro \
-   -v ${your-edge-agent-folder}:/opt/NanoLLM \
-   -v ${your-edge-agent-folder}/pre_install/project_presets:/data/nano_llm/presets \
-   ispsae/nano_llm:24.7-r36.2.0_bug_fixed \
-   python3 -m nano_llm.studio
-   ```
-
-Or start it with the HuggingFace token:
-
-1. Register on HuggingFace - Sign up on HuggingFace and obtain an access token (in the Settings section).
-
-   ![](./images/media/image3.png)
-
-   *Remember to replace the HUGGINGFACE_TOKEN value with your own.*
-
-   ```bash
-   sudo jetson-containers run --env HUGGINGFACE_TOKEN=hf_xyz123abc456 \
-   -v /etc/machine-id:/etc/machine-id \
-   -v /:/dummy_root:ro \
-   -v ${your-edge-agent-folder}:/opt/NanoLLM \
-   -v ${your-edge-agent-folder}/pre_install/project_presets:/data/nano_llm/presets \
-   ispsae/nano_llm:24.7-r36.2.0_bug_fixed \
-   python3 -m nano_llm.studio
-   ```
-
-2. Once the service starts on your device, open a browser (Chromium) and navigate to https://IP_ADDRESS:8050 (Note: Do NOT use Firefox).
-
-Here are a few important notes:
-
-- Use the `--load` option to load your prebuilt pipeline before starting.
-- If the program crashes, it will automatically restore the most recent pipeline you created.
-- A "clear memory" function is available, allowing you to reset the system state.
-
-To create a new project, click on the "Agent New Project" button in the top-right corner of Edge Agent. You’ll be given the option to either keep or discard the current pipeline before starting the new one.
-
-Alternatively, you can visit https://IP_ADDRESS:8050/reload in your browser. After about 15 seconds, log back into https://IP_ADDRESS:8050. Either method will return your system to its initial state.
-
-![](./images/media/image4.png)
 
 ## FAQ
 
