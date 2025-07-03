@@ -55,7 +55,7 @@ sudo apt update
 apt depends nvidia-jetpack | awk '{print $2}' | xargs -I {} sudo apt install -y {}
 
 # install containers
-sudo apt install -y nvidia-container curl apt-utils
+sudo apt install -y nvidia-container curl apt-utils nvidia-l4t-dla-compiler
 curl https://get.docker.com | sudo sh
 
 # JP6 docker: Install and hold packages
