@@ -3,6 +3,7 @@ PWD=$(pwd)
 echo $PWD
 
 sudo jetson-containers run \
+--privileged \
 -v /etc/machine-id:/etc/machine-id \
 -v /:/dummy_root:ro \
 -v $PWD/pre_install/project_presets:/data/nano_llm/presets \
