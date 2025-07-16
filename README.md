@@ -133,3 +133,5 @@ How to Find Answers:
 - Check the [FAQ label](https://github.com/advantech-EdgeAI/edge_agent/issues?q=is%3Aissue%20state%3Aclosed%20label%3AFAQ) in Issues to see if your question has already been answered.
 - Use the search bar in the Issues tab to find relevant discussions.
 - If you can’t find what you need, feel free to open a new issue with your question!
+
+Looking for tech support or have a business inquiry? Let’s talk: [Contact Form](https://www.advantech.com/en/form/2bcb7004-44e9-4e70-9ef0-520f326e6141?callback=f51f1493-33ae-43e5-8172-cb8055499ec1)
