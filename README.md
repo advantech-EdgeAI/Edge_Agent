@@ -125,6 +125,12 @@ Load a preset project for a quick demo. Click to learn more.
 
 <a href="https://www.youtube.com/watch?v=XNr-aNQwoPc"><img src="./images/media/quick_demo.gif"></a>
 
+## 7. Field Cases 
+
+We collect successful cases for you to have better understanding Edge Agent's capability. Click it to learn more.
+
+<a href="https://youtu.be/ghxghsQZX18"><img src="./images/media/Sample_Case.gif"></a>
+
 ## FAQ
 
 We maintain frequently asked questions as GitHub Issues. This allows for better tracking, discussions, and updates.
