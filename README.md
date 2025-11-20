@@ -129,7 +129,7 @@ Load a preset project for a quick demo. Click to learn more.
 
 <a href="https://youtu.be/ghxghsQZX18">Click</a> to check out the six scenarios of customized, high-efficiency AI deployment that help clients Build Smarter & Faster.
 
-<a href="https://youtu.be/ghxghsQZX18"><img src="./images/media/Sample_Case.gif"></a>
+<a href="https://youtu.be/ghxghsQZX18"><img src="./images/media/sample_case.gif"></a>
 
 ## FAQ
 
