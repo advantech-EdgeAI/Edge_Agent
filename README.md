@@ -127,9 +127,9 @@ Load a preset project for a quick demo. Click to learn more.
 
 ## 7. Field Cases 
 
-<a href="https://youtu.be/ghxghsQZX18">Click</a> to check out the six scenarios of customized, high-efficiency AI deployment that help clients Build Smarter & Faster.
+<a href="https://youtu.be/bKSFZuh24Yc">Click</a> to check out the six scenarios of customized, high-efficiency AI deployment that help clients Build Smarter & Faster.
 
-<a href="https://youtu.be/ghxghsQZX18"><img src="./images/media/sample_case.gif"></a>
+<a href="https://youtu.be/bKSFZuh24Yc"><img src="./images/media/sample_case.gif"></a>
 
 ## FAQ
 
