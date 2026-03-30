@@ -37,7 +37,7 @@ Our short video tutorial walks you through the steps for installation and config
 
 <a href="https://www.youtube.com/watch?v=zIH040_c2yg"><img src="./images/media/install_tutorial_w_SSD.gif"></a>
 
-### 0. Clone this Repository
+### 1. Clone this Repository
 
 Clone this repository to your JetPack 6 device:
 
@@ -45,7 +45,7 @@ Clone this repository to your JetPack 6 device:
 git clone https://github.com/advantech-EdgeAI/edge_agent.git
 ```
 
-### 1. Docker Service Installation 
+### 2. Docker Service Installation 
 
 Starting from JetPack 6, the SDK Manager does not install Docker service by default.
 
@@ -63,9 +63,9 @@ If Docker is not available, run the following script to install and enable it on
 bash init-dockerd-jetson-jp6.sh
 ```
 
-###  2. (Optional) Setup Extended Storage - NVMe SSD
+###  3. (Optional) Setup Extended Storage - NVMe SSD
 
-🔔 *If your root filesystem (`/`) has more than 200 GB of free storage, you can skip this step and proceed to the '3. Download Essential Data' section.*
+🔔 *If your root filesystem (`/`) has more than 200 GB of free storage, you can skip this step and proceed to the '4. Download Essential Data' section.*
 
 ⚠️ [Why does my Advantech device boot into emergency mode, and how can I fix it?](https://github.com/advantech-EdgeAI/edge_agent/issues/8)
 
@@ -101,7 +101,7 @@ bash init-dockerd-jetson-jp6.sh
 - [Test Docker on SSD](https://github.com/advantech-EdgeAI/edge_agent/issues/5)
 - [Disable Apport Reporting](https://github.com/advantech-EdgeAI/edge_agent/issues/6)
 
-### 3. Download Essential Data
+### 4. Download Essential Data
 
 Run the following script to download Docker images and the necessary packages:
 
