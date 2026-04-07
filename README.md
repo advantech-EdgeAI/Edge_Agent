@@ -43,6 +43,7 @@ Clone this repository to your JetPack 6 device:
 
 ```sh
 git clone https://github.com/advantech-EdgeAI/edge_agent.git
+cd edge_agent
 ```
 
 ### 2. Docker Service Installation 
@@ -87,11 +88,11 @@ bash init-dockerd-jetson-jp6.sh
 
 #### Create ext4 Filesystem on SSD and Mount it to `/ssd` by Default
 
- - Follow the 'Format and Set Up Auto-Mount' section in this [link](https://www.jetson-ai-lab.com/tips_ssd-docker.html#format-and-set-up-auto-mount).
+ - Follow the 'Format and Set Up Auto-mount' section in this [link](https://www.jetson-ai-lab.com/tutorials/ssd-docker-setup/).
 
 #### Migrate Docker Directory to SSD
 
- - Follow the 'Migrate Docker Directory SSD' section in this [link](https://www.jetson-ai-lab.com/tips_ssd-docker.html#migrate-docker-directory-to-ssd).
+ - Follow the 'Migrate Docker Directory to SSD' section in this [link](https://www.jetson-ai-lab.com/tutorials/ssd-docker-setup/).
 
 
 #### Optional Setup Steps
