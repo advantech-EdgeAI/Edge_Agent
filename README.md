@@ -64,9 +64,7 @@ If Docker is not available, run the following script to install and enable it on
 bash init-dockerd-jetson-jp6.sh
 ```
 
-###  3. (Optional) Setup Extended Storage - NVMe SSD
-
-🔔 *If your root filesystem (`/`) has more than 200 GB of free storage, you can skip this step and proceed to the '4. Download Essential Data' section.*
+###  3. Setup Extended Storage - NVMe SSD
 
 ⚠️ [Why does my Advantech device boot into emergency mode, and how can I fix it?](https://github.com/advantech-EdgeAI/edge_agent/issues/8)
 
@@ -92,7 +90,8 @@ bash init-dockerd-jetson-jp6.sh
 
 #### Migrate Docker Directory to SSD
 
- - Follow the 'Migrate Docker Directory to SSD' section in this [link](https://www.jetson-ai-lab.com/tutorials/ssd-docker-setup/).
+ 1. The SSD directory on the root should be exactly as `/ssd` (not `/SSD`). Please follow the next step.
+ 2. Follow the 'Migrate Docker Directory to SSD' section in this [link](https://www.jetson-ai-lab.com/tutorials/ssd-docker-setup/).
 
 
 #### Optional Setup Steps
