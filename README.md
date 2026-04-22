@@ -66,8 +66,6 @@ bash init-dockerd-jetson-jp6.sh
 
 ###  3. Setup Extended Storage - NVMe SSD
 
-⚠️ [Why does my Advantech device boot into emergency mode, and how can I fix it?](https://github.com/advantech-EdgeAI/edge_agent/issues/8)
-
 #### Physical Installation
 
 1. Power off your Jetson device and disconnect peripherals.
