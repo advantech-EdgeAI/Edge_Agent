@@ -15,21 +15,21 @@ if [ -z "$HUGGINGFACE_TOKEN" ]; then
     exit 1
 fi
 
-echo "=== [1/4] Checking SSD mount status ==="
-if ! mount | grep -q " /ssd "; then
-    echo "SSD not mounted, mounting..."
-    sudo mount /ssd
-    echo "SSD mounted"
+echo "=== [1/4] Checking SSD mount status (skip) ==="
+#if ! mount | grep -q " /ssd "; then
+#    echo "SSD not mounted, mounting..."
+#    sudo mount /ssd
+#    echo "SSD mounted"
 
-    echo "=== [2/4] Restarting containerd + Docker ==="
-    sudo systemctl restart containerd
-    sleep 5
-    sudo systemctl restart docker
-    sleep 3
-    echo "Docker restarted"
-else
-    echo "SSD already mounted, skipping step 2"
-fi
+echo "=== [2/4] Restarting containerd + Docker (skip) ==="
+#    sudo systemctl restart containerd
+#    sleep 5
+#    sudo systemctl restart docker
+#    sleep 3
+#    echo "Docker restarted"
+#else
+#    echo "SSD already mounted, skipping step 2"
+#fi
 
 echo "=== [3/4] Verifying Docker image exists ==="
 if docker images | grep -q "^old/nano_llm "; then
