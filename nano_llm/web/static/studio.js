@@ -40,8 +40,15 @@ function loadStudio(config) {
   //setTimeout( ()=>{ debugger }, 5000);
 }
 
-function onWebsocketMsg(payload, type) {
-  if( type == MESSAGE_JSON ) {     
+function onWebsocketMsg(payload, type, metadata) {
+  // Route JPEG video frames before JSON handling (binary fast path)
+  if( type == MESSAGE_VIDEO_FRAME ) {
+    if( typeof onVideoFrameReceived === 'function' )
+      onVideoFrameReceived(payload, metadata);
+    return;
+  }
+
+  if( type == MESSAGE_JSON ) {
     if( 'modules' in payload ) {
       addModules(payload['modules']);
     }
@@ -104,7 +111,13 @@ function autoSavePreset(name) {
 }
 
 function loadPreset(name) {
-  sendWebsocket({'load': name});
+  // Full pipeline replacement restarts the whole process (like New -> Discard)
+  // instead of hot-swapping in place, then auto-loads this preset once the
+  // fresh process comes back up. See dynamic_agent.py restart_and_load() for why.
+  // (showReloadMessage/pollForReload are defined in studio.html)
+  sendWebsocket({'restart_and_load': name});
+  showReloadMessage();
+  pollForReload();
 }
 
 function insertPreset(name, context=true) {
@@ -138,27 +151,3 @@ function setPresets(presets) {
     context_menu.append(`<li><a class="dropdown-item" href="#" onclick="insertPreset('${preset}', true)">${preset}</a></li>`);
   });
 }
-
-// https://stackoverflow.com/a/77965966
-/*import './webrtc.js';
-import * as websocket from './websocket.js';
-import './debounce.js';
-import './audio.js';
-import './grid.js';
-import './menu.js';
-
-Object.assign(globalThis, websocket);
-console.log('globalThis', globalThis);
-*/
-
-// https://ardislu.dev/import-javascript-module-into-global
-/*await Promise.all([
-  import('./webrtc.js'),
-  import('./websocket.js'),
-  import('./debounce.js'),
-  import('./audio.js'),
-  import('./grid.js'),
-  import('./menu.js')
-]).then(modules => modules.forEach(m => Object.assign(globalThis, m)));
-
-console.log('globalThis', globalThis);*/

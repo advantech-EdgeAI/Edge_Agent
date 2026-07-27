@@ -30,10 +30,9 @@ class RecDetRes(Plugin):
         logging.info(f"Log-Message: {self.log_message}")
         detection_results = json.loads(input)
         detected_items, detected_items_bbox, detected_items_conf = detection_results
-        print("detected_items: ", detected_items)
-        print("detected_items_bbox: ", detected_items_bbox)
-        print("detected_items_conf: ", detected_items_conf)
-        print("="*60)
+        logging.debug(f"detected_items: {detected_items}")
+        logging.debug(f"detected_items_bbox: {detected_items_bbox}")
+        logging.debug(f"detected_items_conf: {detected_items_conf}")
         self.output(detection_results, RecDetRes.OutputText)
 
     @classmethod

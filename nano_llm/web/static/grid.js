@@ -6,6 +6,24 @@ var moduleTypes;
 var nodeIdToName = {};
 var stateListeners = {};
 var outputListeners = {};
+var videoFrameListeners = {};  // plugin_name -> callback(ArrayBuffer)
+var suppressGridAdded = false;   // suppress 'added' events during batch plugin init
+var suppressGridRemoved = false; // suppress 'removed' events during programmatic plugin removal
+
+// Called by studio.js onWebsocketMsg when a MESSAGE_VIDEO_FRAME arrives.
+// metadata = first 8 chars of plugin name (null-padded ASCII from server).
+function onVideoFrameReceived(frameData, metadata) {
+  for (const [pluginName, listener] of Object.entries(videoFrameListeners)) {
+    // Match on prefix: server encodes up to 8 chars of the plugin name
+    if (!metadata || pluginName.startsWith(metadata) || metadata.startsWith(pluginName.substring(0, 8))) {
+      listener(frameData);
+      return;
+    }
+  }
+  // Fallback: single registered listener
+  const keys = Object.keys(videoFrameListeners);
+  if (keys.length === 1) videoFrameListeners[keys[0]](frameData);
+}
 var ignoreGraphEvents=false;
 
 function customizeNode(plugin_name, color = '#add8e6', label = 'Advantech', labelWidth = '60px', labelHeight = '20px', fontSize = '10px') {
@@ -40,6 +58,10 @@ function addGrid() {
   grid = GridStack.init({'column': 12, 'cellHeight': 50, 'float': true});
 
   grid.on('added', function(event, items) {
+    // Suppress during batch load: server-saved positions (restored via get_state_dict)
+    // are authoritative. Letting GridStack's auto-placement overwrite them causes
+    // position drift every container restart.
+    if (!items || suppressGridAdded) return;
     items.forEach((item) => {
       console.log(`grid widget ${item.id} was added`, item);
       sendWebsocket({
@@ -49,8 +71,9 @@ function addGrid() {
       }});
     });
   });
-  
+
   grid.on('change', function(event, items) {
+    if (!items) return;  // guard against bubbled DOM events (e.g. <select> change)
     items.forEach((item) => {
       console.log(`grid widget ${item.id} changed position/size`, item);
       sendWebsocket({
@@ -60,14 +83,15 @@ function addGrid() {
       }});
     });
   });
-  
+
   grid.on('removed', function(event, items) {
+    if (!items || suppressGridRemoved) return;
     items.forEach((item) => {
       console.log(`grid widget ${item.id} has been removed`, item);
       sendWebsocket({
         'config_plugin': {
           'name': item.id,
-          'layout_grid': {} 
+          'layout_grid': {}
       }});
     });
   });
@@ -88,8 +112,13 @@ function addGrid() {
 
 function addGridWidget(id, title, html, titlebar_html, grid_options) {
   const plugin = id.includes('_grid') ? id.replace('_grid', '') : id;
-  
-  if( grid_options == undefined ) 
+
+  if( document.getElementById(id) ) {
+    console.log(`grid widget ${id} already exists, skipping duplicate`);
+    return document.querySelector(`.grid-stack-item[gs-id="${plugin}"]`);
+  }
+
+  if( grid_options == undefined )
       grid_options = {w: 3, h: 3};
 
   if( titlebar_html != undefined )
@@ -164,9 +193,10 @@ function addGridWidget(id, title, html, titlebar_html, grid_options) {
   }
   
   addStateListener(plugin, function(state_dict) {
-    if( 'layout_grid' in state_dict ) {
-      console.log(`updating ${plugin} grid widget`, state_dict['layout_grid']);
-      grid.update(widget, state_dict['layout_grid']);
+    const lg = state_dict['layout_grid'];
+    if( lg && Object.keys(lg).length > 0 ) {
+      console.log(`updating ${plugin} grid widget`, lg);
+      grid.update(widget, lg);
     }
   });
   
@@ -307,10 +337,20 @@ function addTerminalWidget(name, id, title, grid_options) {
   const history_id = `${id}_history`;
 
   const html = `
-    <div id="${history_id}" class="bg-medium-gray p-2 mb-2" style="font-family: monospace, monospace; font-size: 100%; overflow: scroll; text-wrap: nowrap; flex-grow: 1;"</div>
+    <div style="display:flex; justify-content:flex-end; margin-bottom:4px;">
+      <button onclick="(function(){
+        var txt = document.getElementById('${history_id}').innerText;
+        navigator.clipboard.writeText(txt).then(function(){
+          var btn = document.querySelector('#${history_id}').previousElementSibling.querySelector('button');
+          var orig = btn.textContent; btn.textContent='Copied!';
+          setTimeout(function(){btn.textContent=orig;}, 1500);
+        });
+      })()" style="font-size:12px; padding:2px 8px; cursor:pointer;">Copy</button>
+    </div>
+    <div id="${history_id}" class="bg-medium-gray p-2 mb-2" style="font-family: monospace, monospace; font-size: 100%; overflow: scroll; text-wrap: nowrap; flex-grow: 1; user-select: text !important;"></div>
   `;
-  
-  let widget = addGridWidget(id, 'Terminal', html, null, Object.assign({x: 0, y: 14, w: 8, h: 6}, grid_options));
+
+  let widget = addGridWidget(id, 'Terminal', html, null, Object.assign({x: 0, y: 11, w: 8, h: 6}, grid_options));
 
   addOutputListener(name, 0, function(log_entry) {
     let chc = document.getElementById(history_id);
@@ -346,11 +386,15 @@ function escapeHTML(unsafe) {
 }
 
 function updateNanoDB(name, gallery_id, search_results) {
+  const contextMenuId = `contextMenu_${gallery_id}`;
+
+  // Don't re-render while context menu is open (would destroy it)
+  if ($(`#${contextMenuId}`).is(':visible')) return;
+
   let obj = $(`#${gallery_id}`);
   let contents = '';
-  
+
   // Create context menu with preview
-  const contextMenuId = `contextMenu_${gallery_id}`;
   const contextMenuHTML = `
     <div id="${contextMenuId}" class="custom-context-menu" 
          style="display: none; position: absolute; background: white; border: 1px solid #ccc; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); z-index: 1000; min-width: 200px;">
@@ -497,20 +541,21 @@ function addNanoDBWidget(name, id, title, grid_options) {
   const nanodb_image_tags_submit_id = `nanodb_image_tags_${id}_submit`;
   const tag_search_input_id = `${id}_tag_search`;
   const tag_search_submit_id = `${id}_tag_search_submit`;
-  
+  const clear_all_id = `${id}_clear_all`;
+
   const html = `
-    <div style="margin-bottom: 15px;"> 
+    <div style="margin-bottom: 15px;">
       <label for="${nanodb_image_tags_input_id}" style="display: block; margin-bottom: 5px; font-weight: bold; color: #eeeeee;">
         Insert
       </label>
       <div class="input-group">
-        <input id="${nanodb_image_tags_input_id}" class="form-control" placeholder="Tag incoming feed" 
+        <input id="${nanodb_image_tags_input_id}" class="form-control" placeholder="Tag incoming feed"
           title="Enter description of the incoming image to tag and add to vector database"></input>
         <span id="${nanodb_image_tags_submit_id}" class="input-group-text bg-light-gray" style="color: #eeeeee;">Add</span>
       </div>
     </div>
-    
-    <div style="margin-bottom: 15px;"> 
+
+    <div style="margin-bottom: 15px;">
       <label for="${input_id}" style="display: block; margin-bottom: 5px; font-weight: bold; color: #eeeeee;">
         Search by vision
       </label>
@@ -520,7 +565,7 @@ function addNanoDBWidget(name, id, title, grid_options) {
       </div>
     </div>
 
-    <div style="margin-bottom: 15px;"> 
+    <div style="margin-bottom: 15px;">
       <label for="${tag_search_input_id}" style="display: block; margin-bottom: 5px; font-weight: bold; color: #eeeeee;">
         Search by Tag
       </label>
@@ -530,7 +575,11 @@ function addNanoDBWidget(name, id, title, grid_options) {
       </div>
     </div>
 
-    <div id="${gallery_id}" class="bg-medium-gray p-2 mt-2" style="font-size: 100%; overflow-y: scroll; flex-grow: 1;" 
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+      <label style="font-weight: bold; color: #eeeeee; margin: 0;">Results</label>
+      <span id="${clear_all_id}" style="color: #ff6b6b; cursor: pointer; font-size: 0.8em; padding: 2px 8px; border: 1px solid #ff6b6b; border-radius: 4px;">Clear All</span>
+    </div>
+    <div id="${gallery_id}" class="bg-medium-gray p-2" style="font-size: 100%; overflow-y: scroll; flex-grow: 1;"
       ondrop="onFileDrop(event)" ondragover="onFileDrag(event)"></div>
   `;
 
@@ -582,6 +631,14 @@ function addNanoDBWidget(name, id, title, grid_options) {
   document.getElementById(submit_id).addEventListener('click', onsubmit);
   document.getElementById(nanodb_image_tags_submit_id).addEventListener('click', tag_onsubmit);
   document.getElementById(tag_search_submit_id).addEventListener('click', onTagSearch);
+
+  document.getElementById(clear_all_id).addEventListener('click', function() {
+    if (confirm('Clear all images from this database? This cannot be undone.')) {
+      msg = {};
+      msg[name] = {'clear_all': true};
+      sendWebsocket(msg);
+    }
+  });
 
   addOutputListener(name, 0, function(search_results) {
     updateNanoDB(name, gallery_id, search_results);
@@ -729,42 +786,407 @@ function updateChatHistory(id, history) {
     }
 }
 
-function addVideoOutputWidget(name, id, title, grid_options) {
-  const video_id = `${id}_video_player`;
+
+function addWebVideoInWidget(name, id, title, grid_options) {
+  // 純本地攝影機預覽面板：只顯示 getUserMedia 抓到的畫面，不涉及任何網路串流邏輯。
+  // 這裡的 <video> 元素同時也是 audio.js captureAndSendCameraFrame() 擷取畫面的來源，
+  // 用 data-role 屬性讓 audio.js 找得到，不需要知道 plugin 實例名稱。
+  const video_id = `${id}_video`;
+  const status_id = `${id}_status`;
   const html = `
-    <div>
-      <button id="${id}_stop_btn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Stop</button>
-      <video id="${video_id}" autoplay controls playsinline muted>Your browser does not support video</video>
+    <div style="display:flex; flex-direction:column; flex:1; min-height:0;">
+      <div style="flex:1; min-height:0; position:relative; background:#111; border-radius:6px; overflow:hidden;">
+        <video id="${video_id}" data-role="web-video-in" autoplay muted playsinline
+          style="display:none; width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0;">
+          Your browser does not support video
+        </video>
+        <div id="${status_id}" style="display:flex; align-items:center; justify-content:center;
+          width:100%; height:100%; color:#666; font-size:13px; position:absolute; top:0; left:0;">
+          等待攝影機權限…
+        </div>
+      </div>
     </div>
   `;
-  
-  let widget = addGridWidget(id, title, html, null, Object.assign({w: 5, h: 5}, grid_options));
-  let video = document.getElementById(video_id);
-  let stopBtn = document.getElementById(`${id}_stop_btn`);
+  return addGridWidget(id, title, html, null, Object.assign({ w: 4, h: 4 }, grid_options));
+}
 
-    // Add stop button click event
-    stopBtn.addEventListener('click', function() {
-      msg = {};
-      msg[name] = {'stop_video': 'stop'};
-      sendWebsocket(msg); // Send stop message through websocket
-    });
-  
-  video.addEventListener('playing', function(e) {
-    const abs_rect = video.getBoundingClientRect();
-    const options = {'w': Math.ceil(abs_rect.width/grid.cellWidth()), 'h': Math.ceil(abs_rect.height/grid.getCellHeight())+1};
-    console.log(`${video_id} playing`, e, abs_rect, options, grid.cellWidth(), grid.getCellHeight());
-    grid.update(widget, options);
-  });
+window.MJPEG_STREAMS = window.MJPEG_STREAMS || {};
+
+function addVideoOutputWidget(name, id, title, grid_options) {
+
+  if (window.MJPEG_STREAMS[name] && window.MJPEG_STREAMS[name].img) {
+    console.log(`Stopping previous MJPEG stream for name: ${name}`);
+    window.MJPEG_STREAMS[name].img.src = '';  // Stop the old MJPEG stream
+    delete window.MJPEG_STREAMS[name];        // clear record
+  }
+
+  // Send WebSocket message to create MJPEG stream port
+  const msg = {};
+  msg[name] = { 'create_mjpeg_stream_port': name };
+  sendWebsocket(msg);
+
+  // Port starts as placeholder; Python will send actual port via send_stats "mjpeg_port:XXXX"
+  let port = 10000;
+  const host = window.location.hostname;
+
+  const video_id = `${id}_video_player`;
+  const select_id = `${id}_stream_select`;
+  const mjpeg_id = `${id}_mjpeg_stream`;
+  const error_id = `${id}_error`;
+  const html = `
+    <div style="display:flex; flex-direction:column; flex:1; min-height:0; gap:6px;">
+      <div style="flex-shrink:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <label for="${select_id}" style="margin:0; font-size:13px;">Stream:</label>
+        <select id="${select_id}" style="font-size:13px;">
+          <option value="websocket">WebSocket (WebRTC)</option>
+          <option value="mjpeg" selected>WebSocket JPEG</option>
+        </select>
+        <button id="${id}_stop_btn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" style="font-size:13px;">Stop</button>
+        <a id="${id}_webrtc_cert" href="#" target="_blank" style="font-size:12px; color:#fa0; font-weight:bold; display:none; border:1px solid #fa0; border-radius:4px; padding:2px 6px;" title="Click to open WebRTC server in a new tab and accept the self-signed SSL certificate, then return here.">⚠ Accept WebRTC Cert</a>
+      </div>
+      <div id="${id}_media_container" style="flex:1; min-height:0; position:relative; background:#111; border-radius:6px; overflow:hidden; contain:layout paint;">
+        <video id="${video_id}" autoplay controls playsinline muted
+          style="display:none; width:100%; height:100%; object-fit:contain; position:absolute; top:0; left:0;">
+          Your browser does not support video
+        </video>
+        <img id="${mjpeg_id}" src="" alt="MJPEG Video Stream"
+          style="display:none; width:100%; height:100%; object-fit:contain; position:absolute; top:0; left:0;">
+        <div id="${id}_status" style="display:flex; align-items:center; justify-content:center;
+          width:100%; height:100%; color:#666; font-size:13px; position:absolute; top:0; left:0;">
+          No signal
+        </div>
+      </div>
+      <div id="${error_id}" style="flex-shrink:0; color:#f66; font-size:12px; min-height:16px;"></div>
+    </div>
+  `;
+
+  // Adding widgets to the grid
+  let widget = addGridWidget(id, title, html, null, Object.assign({ w: 5, h: 5 }, grid_options));
+  let video = document.getElementById(video_id);
+  let mjpegImg = document.getElementById(mjpeg_id);
+  let stopBtn = document.getElementById(`${id}_stop_btn`);
+  let streamSelect = document.getElementById(select_id);
+  let errorDiv = document.getElementById(error_id);
+  let statusDiv = document.getElementById(`${id}_status`);
+  let webrtcCertLink = document.getElementById(`${id}_webrtc_cert`);
+
+  function setStatus(msg, color) {
+    if (!statusDiv) return;
+    statusDiv.textContent = msg;
+    statusDiv.style.color = color || '#666';
+    statusDiv.style.display = (msg && msg.length > 0) ? 'flex' : 'none';
+  }
 
   let streamName = "output";
-  let streamIndex = name.search('_');
-  
-  if( streamIndex >= 0 ) {
-    streamName += name.slice(streamIndex);
+  let webrtc_match = name.match(/_(\d+)$/);
+
+  if (webrtc_match) {
+    streamName += "_" + webrtc_match[1];
   }
-  
-  playStream(getWebsocketURL(streamName), video); // TODO handle actual stream name
-  
+
+  // Check network connectivity by testing Google
+  async function checkNetworkConnectivity() {
+    try {
+      // Try to fetch Google favicon with 3 second timeout
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Network timeout')), 3000)
+      );
+      
+      const fetchPromise = fetch('https://www.google.com/favicon.ico', { 
+        method: 'HEAD', 
+        mode: 'no-cors',
+        cache: 'no-cache'
+      });
+      
+      await Promise.race([fetchPromise, timeout]);
+      return true;
+    } catch (error) {
+      console.warn('Network connectivity check failed:', error);
+      return false;
+    }
+  }
+
+  // Show error message
+  function showError(message) {
+    errorDiv.textContent = message;
+    console.error(message);
+  }
+
+  // WebRTC stream via WebSocket signaling on port 8554.
+  // If WebRTC fails (no encoder / ICE failure), auto-fallback to WS JPEG via port 49000.
+  function playWebSocketStream() {
+    console.log('[VideoOutput] playWebSocketStream() called');
+    mjpegImg.onload = null;
+    mjpegImg.onerror = null;
+    mjpegImg.src = '';
+    mjpegImg.style.display = 'none';
+
+    const wsUrl = getWebsocketURL(streamName);
+    if (typeof connections !== 'undefined' && connections[wsUrl]) {
+      try {
+        if (connections[wsUrl].webrtcPeer) connections[wsUrl].webrtcPeer.close();
+        if (connections[wsUrl].websocket)  connections[wsUrl].websocket.close();
+        delete connections[wsUrl];
+      } catch(e) {}
+    }
+    video.style.display = 'none';
+    errorDiv.textContent = '';
+    setStatus('Connecting to WebRTC...', '#aaa');
+
+    const certUrl = `https://${host}:8554`;
+    if (webrtcCertLink) {
+      webrtcCertLink.href = certUrl;
+      webrtcCertLink.style.display = 'none';  // only show on cert error
+    }
+
+    // Auto-fallback: if WebRTC has not produced a frame within 4 seconds,
+    // switch to WS JPEG (uses the WS JPEG infrastructure added to server.py).
+    let webrtcSucceeded = false;
+    const fallbackTimer = setTimeout(() => {
+      if (streamSelect.value !== 'websocket' || webrtcSucceeded) return;
+      console.warn('[VideoOutput] WebRTC timeout — falling back to WS JPEG');
+      showError('WebRTC timed out. Falling back to WebSocket JPEG stream.');
+      playWsJpegFallback();
+    }, 4000);
+
+    try {
+      playStream(wsUrl, video);
+
+      const ws = connections[wsUrl] && connections[wsUrl].websocket;
+      if (ws) {
+        ws.addEventListener('open', () => {
+          setStatus('WebRTC signaling connected — waiting for ICE...', '#4a4');
+
+          const stateMonitor = setInterval(() => {
+            if (streamSelect.value !== 'websocket') { clearInterval(stateMonitor); return; }
+            const conn = connections[wsUrl];
+            if (!conn || !conn.webrtcPeer) return;
+            const connState = conn.webrtcPeer.connectionState;
+            const iceState  = conn.webrtcPeer.iceConnectionState;
+            console.log(`[WebRTC] conn=${connState} ice=${iceState} video.readyState=${video.readyState}`);
+            if (connState === 'connected') {
+              clearInterval(stateMonitor);
+              if (video.readyState < 2) setStatus('WebRTC connected — waiting for first frame...', '#4a4');
+            } else if (connState === 'failed' || iceState === 'failed' || iceState === 'disconnected') {
+              clearInterval(stateMonitor);
+              clearTimeout(fallbackTimer);
+              setStatus('', '');
+              showError(`WebRTC ICE failed. Falling back to WS JPEG...`);
+              playWsJpegFallback();
+            }
+          }, 500);
+        });
+        ws.addEventListener('error', () => {
+          clearTimeout(fallbackTimer);
+          setTimeout(() => {
+            if (streamSelect.value === 'websocket' && !webrtcSucceeded) {
+              if (webrtcCertLink) webrtcCertLink.style.display = 'inline';
+              setStatus('', '');
+              showError(`WebRTC cert not trusted on port 8554. Click "⚠ Accept WebRTC Cert" above then reload. Using JPEG fallback...`);
+              playWsJpegFallback();
+            }
+          }, 1500);
+        });
+        ws.addEventListener('close', () => {
+          if (streamSelect.value === 'websocket' && video.readyState < 2 && !webrtcSucceeded) {
+            clearTimeout(fallbackTimer);
+            if (webrtcCertLink) webrtcCertLink.style.display = 'inline';
+            showError('WebRTC unavailable. Click "⚠ Accept WebRTC Cert" above for H264 video. Using JPEG fallback...');
+            playWsJpegFallback();
+          }
+        });
+      }
+
+      video.onloadedmetadata = () => {
+        if (streamSelect.value !== 'websocket') return;
+        video.style.display = 'block';
+        setStatus('', '');
+        errorDiv.textContent = '';
+      };
+      video.onplaying = () => {
+        if (streamSelect.value !== 'websocket') return;
+        webrtcSucceeded = true;
+        clearTimeout(fallbackTimer);
+        video.style.display = 'block';
+        setStatus('', '');
+        errorDiv.textContent = '';
+        streamSelect.style.borderColor = '#4a4';
+        streamSelect.title = 'Active: WebRTC H264';
+      };
+      video.onerror = () => {
+        if (streamSelect.value === 'websocket' && !webrtcSucceeded) {
+          clearTimeout(fallbackTimer);
+          showError('WebRTC stream error. Falling back to WS JPEG...');
+          playWsJpegFallback();
+        }
+      };
+    } catch (e) {
+      clearTimeout(fallbackTimer);
+      showError(`WebRTC error: ${e.message}. Falling back to WS JPEG...`);
+      playWsJpegFallback();
+    }
+  }
+
+  // WS JPEG: receives MESSAGE_VIDEO_FRAME binary messages from server.py
+  // at ~20fps and displays them via mjpegImg. Avoids HTTP mixed-content issues.
+  // Called both as auto-fallback from WebRTC failure and when user manually
+  // selects "WebSocket JPEG" from the dropdown (manual=true).
+  function playWsJpegFallback(manual) {
+    if (streamSelect.value !== 'websocket' && streamSelect.value !== 'mjpeg') return;
+
+    // When manually selected: tear down any running WebRTC connection first
+    if (manual) {
+      const wsUrl = getWebsocketURL(streamName);
+      if (typeof connections !== 'undefined' && connections[wsUrl]) {
+        try {
+          if (connections[wsUrl].webrtcPeer) connections[wsUrl].webrtcPeer.close();
+          if (connections[wsUrl].websocket)  connections[wsUrl].websocket.close();
+          delete connections[wsUrl];
+        } catch(e) {}
+      }
+      video.onloadedmetadata = null;
+      video.onplaying = null;
+      video.onerror = null;
+      if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+      if (webrtcCertLink) webrtcCertLink.style.display = 'none';
+      errorDiv.textContent = '';
+    }
+
+    video.style.display = 'none';
+    mjpegImg.onload = null;
+    mjpegImg.onerror = null;
+    mjpegImg.src = '';
+    setStatus('WebSocket JPEG...', '#aaa');
+
+    let prevObjUrl = null;
+    videoFrameListeners[name] = function(frameData) {
+      if (streamSelect.value !== 'websocket' && streamSelect.value !== 'mjpeg') return;
+      if (prevObjUrl) { URL.revokeObjectURL(prevObjUrl); prevObjUrl = null; }
+      prevObjUrl = URL.createObjectURL(new Blob([frameData], {type: 'image/jpeg'}));
+      mjpegImg.src = prevObjUrl;
+      mjpegImg.style.display = 'block';
+      setStatus('', '');
+      errorDiv.textContent = '';
+      streamSelect.style.borderColor = '#88a';
+      streamSelect.title = manual ? 'Active: WebSocket JPEG' : 'Active: WebSocket JPEG (fallback — WebRTC unavailable)';
+    };
+  }
+
+  function playMJPEGStream() {
+    // Stop WS JPEG listener so frames are no longer routed here
+    if (videoFrameListeners[name]) {
+      delete videoFrameListeners[name];
+    }
+
+    // Cleanly shut down any stale WebRTC connection
+    const wsUrl = getWebsocketURL(streamName);
+    if (typeof connections !== 'undefined' && connections[wsUrl]) {
+      try {
+        if (connections[wsUrl].webrtcPeer) connections[wsUrl].webrtcPeer.close();
+        if (connections[wsUrl].websocket)  connections[wsUrl].websocket.close();
+        delete connections[wsUrl];
+      } catch(e) {}
+    }
+    video.onloadedmetadata = null;
+    video.onplaying = null;
+    video.onerror = null;
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(t => t.stop());
+      video.srcObject = null;
+    }
+    video.style.display = 'none';
+    errorDiv.textContent = '';
+    streamSelect.style.borderColor = '';
+    streamSelect.title = '';
+    if (webrtcCertLink) webrtcCertLink.style.display = 'none';
+    setStatus('Connecting to MJPEG...', '#aaa');
+
+    const baseUrl = `http://${host}:${port}`;
+    const mjpegUrlWithTimestamp = `${baseUrl}/mjpeg_feed?t=${new Date().getTime()}`;
+
+    window.MJPEG_STREAMS[name] = { img: mjpegImg, url: mjpegUrlWithTimestamp };
+    mjpegImg.src = '';
+    mjpegImg.src = mjpegUrlWithTimestamp;
+
+    let mjpegRetries = 0;
+    let mjpegRetryTimer = null;
+
+    mjpegImg.onload = () => {
+      mjpegImg.style.display = 'block';
+      setStatus('', '');
+      streamSelect.style.borderColor = '#44a';
+      streamSelect.title = 'Active: MJPEG (HTTP)';
+      mjpegRetries = 0;
+      if (mjpegRetryTimer) { clearTimeout(mjpegRetryTimer); mjpegRetryTimer = null; }
+    };
+    mjpegImg.onerror = () => {
+      if (streamSelect.value !== 'mjpeg') return;
+      mjpegImg.style.display = 'none';
+      mjpegRetries++;
+      const delay = mjpegRetries <= 3 ? 1500 : 3000;
+      setStatus(`MJPEG connecting... (${mjpegRetries})`, '#aaa');
+      mjpegRetryTimer = setTimeout(() => {
+        if (streamSelect.value !== 'mjpeg') return;
+        mjpegImg.src = '';
+        mjpegImg.src = `http://${host}:${port}/mjpeg_feed?t=${new Date().getTime()}`;
+      }, delay);
+    };
+  }
+
+  // Listen for Python to report the actual MJPEG port via plugin parameter 'mjpeg_port'
+  addStateListener(name, function(state) {
+    if (state && state.mjpeg_port && state.mjpeg_port > 0) {
+      const newPort = parseInt(state.mjpeg_port, 10);
+      if (newPort !== port) {
+        port = newPort;
+        console.log(`VideoOutput: received actual MJPEG port ${port} from server`);
+        if (streamSelect.value === 'mjpeg') playMJPEGStream();
+      }
+    }
+  });
+
+
+  // GridStack v10 uses pointer events (pointerdown) for drag detection.
+  // Block both mousedown and pointerdown so neither event reaches GridStack
+  // when the user clicks on interactive controls inside the widget.
+  [streamSelect, stopBtn, webrtcCertLink].forEach(el => {
+    if (el) {
+      el.addEventListener('mousedown',  e => e.stopPropagation());
+      el.addEventListener('pointerdown', e => e.stopPropagation());
+    }
+  });
+
+  // Select Switch Stream from the drop-down menu
+  streamSelect.addEventListener('change', function (event) {
+    event.stopPropagation();  // also prevent GridStack's change handler from receiving this
+    console.log(`Switching to stream: ${streamSelect.value}`);
+    if (streamSelect.value === 'websocket') {
+      playWebSocketStream();
+    } else if (streamSelect.value === 'mjpeg') {
+      playWsJpegFallback(true);  // manual: bypass WebRTC, use WS JPEG directly
+    }
+  });
+
+  // Stop button event
+  stopBtn.addEventListener('click', function () {
+    const isStopping = stopBtn.textContent === 'Stop';
+    console.log('Stopping stream');
+    let msg = {};
+    msg[name] = { 'stop_video': 'stop' };
+    sendWebsocket(msg); // Send a stop message to WebSocket
+    if (isStopping) {
+        stopBtn.textContent = 'Start';
+      } else {
+        stopBtn.textContent = 'Stop';
+      }
+  });
+
+  // Default to WebSocket: tries WebRTC first, auto-falls-back to WS JPEG (low-latency push stream)
+  // when WebRTC encoder is unavailable (e.g. SM110/JetPack7).  WS JPEG latency is ~5-20ms,
+  // matching original WebRTC behavior so Insert frame sync works without any delay compensation.
+  streamSelect.value = 'websocket';
+  playWebSocketStream();
+
   return widget;
 }
 
@@ -813,24 +1235,31 @@ function setStateDict(state_dicts) {
   }
 }
 
+const _statsCache = {};
+
 function setStats(stats_dicts) {
   for( plugin_name in stats_dicts ) {
     const stats = stats_dicts[plugin_name];
-    
+
     if( ! ('summary' in stats) )
       continue;
-    
+
     let summary = stats['summary'];
-    
+
     if( Array.isArray(summary) ) {
       const num_outputs = $(`.${plugin_name} .outputs .output`).length;
-      summary = summary.join($(`.${plugin_name}`).length == 0 || num_outputs > 0 ? '<br/>' : ' ');
+      summary = summary.join($(`.${plugin_name}`).length == 0 || num_outputs > 0 ? '\n' : ' ');
     }
-    
+
+    // Skip DOM update if text hasn't changed
+    if( _statsCache[plugin_name] === summary )
+      continue;
+    _statsCache[plugin_name] = summary;
+
     let node_stats = document.getElementById(`${plugin_name}_node_stats`);
-    
-    if( node_stats != undefined ) 
-      node_stats.innerHTML = summary;
+
+    if( node_stats != undefined )
+      node_stats.textContent = summary;
   }
 }
 
@@ -842,10 +1271,17 @@ function truncate(str, max_len) {
 }
 
 function addPlugin(plugin) {
-  console.log('addPlugin() =>');
-  console.log(plugin)
-  
   const plugin_name = plugin['name'];
+
+  // Prevent duplicate nodes on WebSocket reconnect / page refresh
+  try {
+    const existing = drawflow.getNodesFromName(plugin_name);
+    if (existing && existing.length > 0) {
+      console.log(`addPlugin: '${plugin_name}' already exists, skipping`);
+      return;
+    }
+  } catch(e) {}
+
   const plugin_title = plugin['title'];
   const layout_grid = plugin['layout_grid'];
   const layout_node = plugin['layout_node'];
@@ -876,7 +1312,7 @@ function addPlugin(plugin) {
   const html = `
     <div style="position: absolute; top: 5px;">
       ${truncate(plugin_title, 14)}
-      <p id="${plugin_name}_node_stats" class="${stats_class}" style="font-family: monospace, monospace; font-size: 80%"></p>
+      <p id="${plugin_name}_node_stats" class="${stats_class}" style="font-family: monospace, monospace; font-size: 80%; white-space: pre-line"></p>
     </div>
   `;
   
@@ -922,12 +1358,13 @@ function addPlugin(plugin) {
   }
 
   // Check if plugin_name includes the following name.
-  if (plugin_name.includes('AutoPrompt_ICL') || plugin_name.includes('NanoLLM_ICL') 
-      || plugin_name.includes('NanoDB_Fashion') || plugin_name.includes('OwlVit_detector') 
-      || plugin_name.includes('OpenWord_detector') 
-      || plugin_name.includes('One_Step_Alert') || plugin_name.includes('Two_Steps_Alert') 
+  if (plugin_name.includes('AutoPrompt_ICL') || plugin_name.includes('NanoLLM_ICL')
+      || plugin_name.includes('NanoDB_Fashion') || plugin_name.includes('OwlVit_detector')
+      || plugin_name.includes('OpenWord_detector') || plugin_name.includes('OpenWord_FineTune')
+      || plugin_name.includes('One_Step_Alert') || plugin_name.includes('Two_Steps_Alert')
       || plugin_name.includes('Save_Pics') || plugin_name.includes("MQTT_Publisher")
-      || plugin_name.includes('VLLM')) {
+      || plugin_name.includes('vLLM') || plugin_name.includes('WebVideoIn')
+      || plugin_name.includes('RecDetRes')) {
     // Call customizeNode to adjust the appearance of the small node and big node color
     customizeNode(plugin_name, color = '#add8e6', label = 'Advantech', labelWidth = '80px', labelHeight = '25px', fontSize = '12px');
   }
@@ -954,10 +1391,12 @@ function addPluginGridWidget(name, type, title, grid_options) {
       return addChatWidget(name, id, title, grid_options);
     case 'NanoLLM_ICL':
       return addChatWidget_no_input(name, id, title, grid_options);
-    case 'VLLM':
+    case 'vLLM':
       return addChatWidget_no_input_vllm(name, id, title, grid_options);
     case 'VideoOutput':
       return addVideoOutputWidget(name, id, title, grid_options);
+    case 'WebVideoIn':
+      return addWebVideoInWidget(name, id, title, grid_options);
     case 'NanoDB':
       return addNanoDBWidget(name, id, title, grid_options);
     case 'NanoDB_Fashion':
@@ -974,14 +1413,22 @@ function addPluginGridWidget(name, type, title, grid_options) {
 function connectPlugins(connections) {
   if( !Array.isArray(connections) )
     connections = [connections];
-    
+
   ignoreGraphEvents = true;
-  
+
   connections.forEach((connection) => {
     const from_id = drawflow.getNodesFromName(connection['from'])[0];
     const to_id = drawflow.getNodesFromName(connection['to'])[0];
+    if( from_id === undefined || to_id === undefined ) {
+      console.log(`skip connection: ${connection['from']}(${from_id}) => ${connection['to']}(${to_id}) — node not found`);
+      return;
+    }
     console.log(`connecting plugin ${connection['from']} (id=${from_id}, channel=${connection['output']}) => ${connection['to']} (id=${to_id}, channel=${connection['input']})`);
-    drawflow.addConnection(from_id, to_id, `output_${connection['output']+1}`, `input_${connection['input']+1}`);
+    try {
+      drawflow.addConnection(from_id, to_id, `output_${connection['output']+1}`, `input_${connection['input']+1}`);
+    } catch(e) {
+      console.log(`addConnection failed: ${e.message}`);
+    }
   });
 
   ignoreGraphEvents = false;
@@ -990,17 +1437,31 @@ function connectPlugins(connections) {
 function removePlugins(plugins) {
   if( !Array.isArray(plugins) )
     plugins = [plugins];
-  
+
   ignoreGraphEvents = true;
-  
+
   plugins.forEach((plugin) => {
+    // remove drawflow node
     try {
       const id = drawflow.getNodesFromName(plugin)[0];
       console.log(`removing plugin ${plugin} (id=${id})`);
-      if( plugin in outputListeners )
-        delete outputListeners[plugin];
       drawflow.removeNodeId(`node-${id}`);
     } catch(e) { console.log(e); }
+
+    // remove grid widget without triggering the 'removed' event
+    // (which would send config_plugin to server and create ghost global_states entries)
+    const widgetEl = document.querySelector(`.grid-stack-item[gs-id="${plugin}"]`);
+    if( widgetEl ) {
+      suppressGridRemoved = true;
+      grid.removeWidget(widgetEl, false);
+      suppressGridRemoved = false;
+      widgetEl.remove();
+    }
+
+    // clean up all listener registries so stale callbacks don't leak
+    delete outputListeners[plugin];
+    delete stateListeners[plugin];
+    delete videoFrameListeners[plugin];
   });
 
   ignoreGraphEvents = false;
@@ -1009,33 +1470,64 @@ function removePlugins(plugins) {
 function addPlugins(plugins) {
   if( !Array.isArray(plugins) )
     plugins = [plugins];
-    
+
+  suppressGridAdded = true;  // prevent GridStack auto-placement from overwriting saved positions
+
   for( i in plugins ) {
     let plugin = plugins[i];
     if( ('global' in plugin) ) {
-      addPluginGridWidget(plugin['name'], null, ('layout_grid' in plugin) ? plugin['layout_grid'] : null);
+      const lg = plugin['layout_grid'];
+      // Only create widget for global plugins that have actual position data.
+      // Empty layout_grid {} means a stale preset entry — skip to avoid ghost widgets.
+      if( lg && Object.keys(lg).length > 0 )
+        addPluginGridWidget(plugin['name'], null, plugin['name'], lg);
     }
     else
       addPlugin(plugin);
   }
-  
+
   ignoreGraphEvents = true;
   
   for( i in plugins ) {
     for( l in plugins[i]['connections'] ) {
       const conn = plugins[i]['connections'][l];
+      const from_id = drawflow.getNodesFromName(plugins[i]['name'])[0];
+      const to_id = drawflow.getNodesFromName(conn['to'])[0];
+      if( from_id === undefined || to_id === undefined ) {
+        console.log(`skip connection (addPlugins): ${plugins[i]['name']}(${from_id}) => ${conn['to']}(${to_id}) — node not found`);
+        continue;
+      }
       console.log('adding connection', conn);
-
-      drawflow.addConnection(
-        drawflow.getNodesFromName(plugins[i]['name'])[0], 
-        drawflow.getNodesFromName(conn['to'])[0],  
-        `output_${conn['output']+1}`, 
-        `input_${conn['input']+1}`
-      );
+      try {
+        drawflow.addConnection(from_id, to_id, `output_${conn['output']+1}`, `input_${conn['input']+1}`);
+      } catch(e) {
+        console.log(`addConnection failed: ${e.message}`);
+      }
     }
   }
   
   ignoreGraphEvents = false;
+  suppressGridAdded = false;
+
+  // After get_state_dict responses arrive, correct layout if Terminal ended up above Node Editor
+  setTimeout(ensureGlobalLayoutOrder, 1200);
+}
+
+function ensureGlobalLayoutOrder() {
+  const graphEl = document.querySelector('.grid-stack-item[gs-id="GraphEditor"]');
+  const termEl  = document.querySelector('.grid-stack-item[gs-id="TerminalPlugin"]');
+  if( !graphEl || !termEl ) return;
+
+  const graphY = parseInt(graphEl.getAttribute('gs-y') ?? '0');
+  const graphH = parseInt(graphEl.getAttribute('gs-h') ?? '11');
+  const termY  = parseInt(termEl.getAttribute('gs-y') ?? '99');
+
+  // Fix whenever Terminal overlaps or sits inside Node Editor (should be below it)
+  if( termY < graphY + graphH ) {
+    console.log(`fixing global layout: Terminal(y=${termY}) overlaps Node Editor(y=${graphY}, h=${graphH})`);
+    grid.update(graphEl, {x: 0, y: 0});
+    grid.update(termEl,  {x: 0, y: graphH});  // y:graphH because Node Editor ends at y:0+graphH
+  }
 }
 
 function addPluginTypes(types) {
@@ -1166,9 +1658,9 @@ function addGraphEditor(name, id, grid_options) {
   `;
 
   let widget = addGridWidget(
-     id, "Node Editor", 
-     html, titlebar_html, 
-     Object.assign({w: 8, h: 11}, grid_options)
+     id, "Node Editor",
+     html, titlebar_html,
+     Object.assign({x: 0, y: 0, w: 8, h: 11}, grid_options)
   );
   
   let editor = document.getElementById("drawflow");
@@ -1356,6 +1848,22 @@ function addDialog(id, title, html, xl, onsubmit, oncancel) {
     $(`#${id}_cancel`).on('click', oncancel);
 }
 
+function escapeHtmlPreserveBr(text) {
+  // Temporarily replace <br> with a placeholder
+  const BR_PLACEHOLDER = '__BR__';
+  text = text.replace(/<br\s*\/?>/gi, BR_PLACEHOLDER);
+
+  // escape HTML special characters
+  text = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // Restore <br>
+  return text.replace(new RegExp(BR_PLACEHOLDER, 'g'), '<br>');
+}
+
+
 function addPluginDialog(plugin_name, stage, title, description, parameters, max_per_column) {
   if( title == undefined )
     title = plugin_name;
@@ -1370,9 +1878,9 @@ function addPluginDialog(plugin_name, stage, title, description, parameters, max
   const dialog_xl = (num_params > max_per_column);
   
   let html = '';
-  
+
   if( description != null )
-    html += `<p>${description}</p>`;
+    html += `<p>${escapeHtmlPreserveBr(description)}</p>`;
     
   html += `<div class="container">`;
   html += `<div class="row">`;

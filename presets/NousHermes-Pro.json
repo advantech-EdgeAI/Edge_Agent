@@ -1,0 +1,78 @@
+{
+  "version": "24.6.1",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 14
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 14,
+        "w": 8,
+        "h": 6
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "UserPrompt",
+      "type": "UserPrompt",
+      "connections": [
+        {
+          "to": "NanoLLM_ICL",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "layout_node": {
+        "x": 50,
+        "y": 100
+      },
+      "init_kwargs": {}
+    },
+    {
+      "name": "NanoLLM_ICL",
+      "type": "NanoLLM_ICL",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 4,
+        "w": 4,
+        "h": 10
+      },
+      "layout_node": {
+        "x": 300,
+        "y": 100
+      },
+      "max_new_tokens": 256,
+      "min_new_tokens": -1,
+      "do_sample": false,
+      "temperature": 0.7,
+      "top_p": 0.95,
+      "repetition_penalty": 1,
+      "drop_inputs": false,
+      "system_prompt": "You are a helpful AI assistant.",
+      "model": "NousResearch/Hermes-2-Pro-Llama-3-8B",
+      "init_kwargs": {
+        "model": "NousResearch/Hermes-2-Pro-Llama-3-8B",
+        "api": "mlc",
+        "quantization": "q4f16_1",
+        "max_context_len": 8192,
+        "drop_inputs": false,
+        "chat_template": "chat-ml-tools",
+        "name": "NanoLLM_ICL"
+      }
+    }
+  ]
+}

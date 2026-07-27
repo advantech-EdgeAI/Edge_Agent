@@ -9,6 +9,9 @@ var audioInputStream;   // MediaStreamAudioSourceNode
 var audioInputCapture;  // AudioWorkletNode
 var audioOutputWorker;  // AudioWorkletNode
 var audioOutputMuted = false;
+var remoteCameraVideo;  // 隱藏的 <video> 元素，用來播放攝影機的 MediaStream
+var remoteCameraCanvas; // 隱藏的 <canvas> 元素，用來擷取靜態畫面
+var remoteCameraCaptureInterval; // 定期擷取畫面送出的 setInterval id（VAD 自動判斷語音時，讓 AutoPrompt_ICL 每次都拿到最新畫面）
 
 function checkMediaDevices() {
   return (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !navigator.mediaDevices.enumerateDevices) ? false : true;
@@ -155,14 +158,72 @@ function onAudioOutput(samples) {
 	};
 }*/
 
-function muteAudioInput() {  
+function ensureRemoteCameraOpen(onReady) {
+	if( remoteCameraVideo ) {
+		if( onReady )
+			onReady();
+		return;  // 已經開過了，不重複要權限
+	}
+	navigator.mediaDevices.getUserMedia({ audio: false, video: true }).then((stream) => {
+		// 優先重複使用 WebVideoIn plugin 產生的面板 <video> 元素（同一顆元素兼做預覽顯示
+		// 跟下面 captureAndSendCameraFrame() 的擷取來源）；找不到（例如目前載入的
+		// pipeline/preset 沒有 WebVideoIn 這個 plugin）就照舊建立隱藏的 detached video 元素。
+		const widgetVideo = document.querySelector('video[data-role="web-video-in"]');
+		remoteCameraVideo = widgetVideo || document.createElement('video');
+		remoteCameraVideo.srcObject = stream;
+		remoteCameraCanvas = document.createElement('canvas');
+		if( onReady ) {
+			remoteCameraVideo.onloadedmetadata = () => {  // 等第一個畫面真的解碼出來才觸發，videoWidth 才會有值
+				if( widgetVideo ) {
+					// 面板裡的 video 元素預設是隱藏的，等畫面真的準備好才顯示，並隱藏狀態文字
+					widgetVideo.style.display = 'block';
+					const statusEl = document.getElementById(widgetVideo.id.replace(/_video$/, '_status'));
+					if( statusEl )
+						statusEl.style.display = 'none';
+				}
+				onReady();
+			};
+		}
+
+		remoteCameraVideo.muted = true;  // 這條 stream 本來就沒有音軌，靜音只是保險，避免瀏覽器自動播放政策卡住
+		remoteCameraVideo.playsInline = true;  // 讓部分手機瀏覽器用行內顯示，不要跳全螢幕
+
+		remoteCameraVideo.play();
+	}).catch(reportError);
+}
+
+function captureAndSendCameraFrame() {
+	if( !remoteCameraVideo || !remoteCameraVideo.videoWidth )
+		return;  // 攝影機還沒開啟，或第一個畫面還沒到
+	remoteCameraCanvas.width = remoteCameraVideo.videoWidth;
+	remoteCameraCanvas.height = remoteCameraVideo.videoHeight;
+	remoteCameraCanvas.getContext('2d').drawImage(remoteCameraVideo, 0, 0);
+	remoteCameraCanvas.toBlob((blob) => {
+		blob.arrayBuffer().then((buffer) => {
+			sendWebsocket(buffer, type=MESSAGE_IMAGE, metadata='jpg');
+		});
+	}, 'image/jpeg', 0.85);
+}
+
+function muteAudioInput() {
 	var button = document.getElementById('audio-input-mute');
 	const muted = button.classList.contains('bi-mic-fill');
 	console.log(`muteAudioInput(${muted})`);
-	if( muted )
+	if( muted ) {
 		button.classList.replace('bi-mic-fill', 'bi-mic-mute-fill');
-	else
+		if( remoteCameraCaptureInterval ) {
+			clearInterval(remoteCameraCaptureInterval);
+			remoteCameraCaptureInterval = undefined;
+		}
+	} else {
 		button.classList.replace('bi-mic-mute-fill', 'bi-mic-fill');
+		ensureRemoteCameraOpen(() => {
+			captureAndSendCameraFrame();
+			// 現在改成由 VADFilter 自動偵測講話結束（不再需要按靜音才觸發），
+			// 所以畫面也要跟著定期更新，讓每次自動判斷出的問題都能配到當下的最新畫面。
+			remoteCameraCaptureInterval = setInterval(captureAndSendCameraFrame, 1000);
+		});
+	}
 	if( audioInputTrack != undefined )
 		audioInputTrack.enabled = !muted;
 }

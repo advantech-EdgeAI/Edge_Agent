@@ -28,6 +28,7 @@ const MESSAGE_BINARY = 2;
 const MESSAGE_FILE = 3;
 const MESSAGE_AUDIO = 4;
 const MESSAGE_IMAGE = 5;
+const MESSAGE_VIDEO_FRAME = 6;
 
 function reportError(msg) {
   console.log(msg);
@@ -148,13 +149,13 @@ function websocketListener(event) {
 			
 		msg_count_rx = msg_id;
 		
-		if( msg_type == MESSAGE_JSON ) { 
+		if( msg_type == MESSAGE_JSON ) {
 			payload.text().then((text) => {
 				json = JSON.parse(text);
-				
+
 				//if( Array.isArray(json) || Object.keys(json).length > 1 || ! ('stats' in json) )
 				//    console.debug('recieved json websocket message:', json);
-				
+
 				if( websocketCallback != undefined )
 						websocketCallback(json, msg_type);
 			});
@@ -166,10 +167,16 @@ function websocketListener(event) {
 					websocketCallback(text, msg_type);
 			});
 		}
-		else if( msg_type >= MESSAGE_BINARY ) { 
+		else if( msg_type >= MESSAGE_BINARY ) {
+			// Extract plugin name from header bytes 24-31 (null-padded ASCII)
+			const metaBytes = new Uint8Array(headerBuffer, 24, 8);
+			let metadata = '';
+			for (let i = 0; i < 8 && metaBytes[i] !== 0; i++)
+				metadata += String.fromCharCode(metaBytes[i]);
+
 			payload.arrayBuffer().then((payloadBuffer) => {
 				if( websocketCallback != undefined )
-					websocketCallback(payloadBuffer, msg_type);
+					websocketCallback(payloadBuffer, msg_type, metadata);
 			});
 		}
 	});

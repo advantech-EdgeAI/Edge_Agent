@@ -49,7 +49,7 @@
           <div class="collapse navbar-collapse flex-grow-1 text-right" id="navbarToggler">
             <ul class="navbar-nav ms-auto flex-nowrap"> <!-- me-auto mb-2 mb-lg-0 -->
               <li class="nav-item">
-                <a class="nav-link no-hover-color">V2.0</a>
+                <a class="nav-link no-hover-color">V3.0</a>
               </li>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" id="navbarAgent" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -153,10 +153,48 @@
         // Clear cache
         clearCache();
 
-         // Wait for 15 seconds and then reload the main page
-        setTimeout(() => {
-            window.location.reload(); // Reload the main page
-        }, 20000);
+        // Reload once the server actually comes back up, instead of guessing a fixed delay
+        pollForReload();
+      }
+
+      // Poll the server until it responds again after a restart, then reload.
+      // A fixed setTimeout can't know how long a restart will actually take (e.g. a
+      // big vLLM model reloading), so it either reloads too early (connection refused /
+      // stuck on an old page) or leaves the user waiting long after the server is ready.
+      function pollForReload(intervalMs = 500, maxWaitMs = 120000, requestTimeoutMs = 3000) {
+        const start = Date.now();
+        let sawDisconnect = false;
+
+        function tryOnce() {
+          const controller = new AbortController();
+          const abortTimer = setTimeout(() => controller.abort(), requestTimeoutMs);
+
+          fetch(window.location.origin + '/', { method: 'GET', cache: 'no-store', signal: controller.signal })
+            .then(() => {
+              clearTimeout(abortTimer);
+              if (sawDisconnect) {
+                window.location.reload();
+              } else if (Date.now() - start < maxWaitMs) {
+                // still talking to the old process (hasn't exited yet) - keep waiting
+                setTimeout(tryOnce, intervalMs);
+              } else {
+                // never observed a disconnect (e.g. the old process died and the new
+                // one re-bound the port between polls) - give up waiting and reload anyway
+                window.location.reload();
+              }
+            })
+            .catch(() => {
+              clearTimeout(abortTimer);
+              sawDisconnect = true; // old process is down (or this attempt timed out) - next successful response means the new one is up
+              if (Date.now() - start < maxWaitMs) {
+                setTimeout(tryOnce, intervalMs);
+              } else {
+                window.location.reload(); // give up waiting and try anyway
+              }
+            });
+        }
+
+        setTimeout(tryOnce, intervalMs);
       }
 
       function showReloadMessage() {
@@ -294,6 +332,6 @@
     </div>
     
     <link rel="stylesheet" href="/static/drawflow.css">
-    
+
 </body>
 </html>

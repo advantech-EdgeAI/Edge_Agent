@@ -1,0 +1,154 @@
+{
+  "version": "24.6.1",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": { "x": 0, "y": 0, "w": 8, "h": 14 }
+    },
+    "TerminalPlugin": {
+      "layout_grid": { "x": 0, "y": 4, "w": 8, "h": 6 }
+    }
+  },
+  "plugins": [
+    {
+      "name": "WebVideoIn",
+      "type": "WebVideoIn",
+      "connections": [
+        { "to": "AutoPrompt_ICL", "input": 0, "output": 0 }
+      ],
+      "layout_grid": { "x": 8, "y": 0, "w": 4, "h": 14 },
+      "layout_node": { "x": 40, "y": 40 },
+      "init_kwargs": {
+        "name": "WebVideoIn"
+      }
+    },
+    {
+      "name": "WebAudioIn",
+      "type": "WebAudioIn",
+      "connections": [
+        { "to": "VADFilter", "input": 0, "output": 0 }
+      ],
+      "layout_grid": {},
+      "layout_node": { "x": 40, "y": 260 },
+      "init_kwargs": {}
+    },
+    {
+      "name": "VADFilter",
+      "type": "VADFilter",
+      "connections": [
+        { "to": "WhisperASR", "input": 0, "output": 0 }
+      ],
+      "layout_grid": {},
+      "layout_node": { "x": 210, "y": 260 },
+      "vad_threshold": 0.5,
+      "vad_window": 0.5,
+      "interrupt_after": 0.5,
+      "audio_chunk": 1600,
+      "init_kwargs": {
+        "vad_threshold": 0.5,
+        "vad_window": 0.5,
+        "interrupt_after": 0.5,
+        "audio_chunk": 0.1,
+        "name": "VADFilter"
+      }
+    },
+    {
+      "name": "WhisperASR",
+      "type": "WhisperASR",
+      "connections": [
+        { "to": "AutoPrompt_ICL", "input": 0, "output": 0 }
+      ],
+      "layout_grid": {},
+      "layout_node": { "x": 380, "y": 260 },
+      "init_kwargs": {
+        "model": "small",
+        "language_code": "en_US",
+        "partial_transcripts": 0.25,
+        "name": "WhisperASR"
+      }
+    },
+    {
+      "name": "AutoPrompt_ICL",
+      "type": "AutoPrompt_ICL",
+      "connections": [
+        { "to": "NanoLLM_ICL", "input": 0, "output": 0 }
+      ],
+      "layout_grid": {},
+      "layout_node": { "x": 720, "y": 150 },
+      "template": "<reset><image> Answer the following question about what you see in the image in one or two sentences: <text>",
+      "seq_replace_mode": false,
+      "init_kwargs": {
+        "template": "<reset><image> Answer the following question about what you see in the image in one or two sentences: <text>",
+        "seq_replace_mode": false,
+        "name": "AutoPrompt_ICL"
+      }
+    },
+    {
+      "name": "NanoLLM_ICL",
+      "type": "NanoLLM_ICL",
+      "connections": [
+        { "to": "PiperTTS", "input": 0, "output": 2 }
+      ],
+      "layout_grid": { "x": 8, "y": 14, "w": 4, "h": 6 },
+      "layout_node": { "x": 1060, "y": 150 },
+      "do_sample": false,
+      "temperature": 0.7,
+      "init_kwargs": {
+        "model": "Efficient-Large-Model/VILA1.5-3b",
+        "api": "MLC",
+        "quantization": "q4f16_ft",
+        "max_context_len": 4096,
+        "drop_inputs": true,
+        "chat_template": "llava-v1",
+        "name": "NanoLLM_ICL"
+      }
+    },
+    {
+      "name": "PiperTTS",
+      "type": "PiperTTS",
+      "connections": [
+        { "to": "RateLimit", "input": 0, "output": 0 }
+      ],
+      "layout_grid": {},
+      "layout_node": { "x": 1400, "y": 150 },
+      "voice": "en_US-libritts-high",
+      "speaker": "p339",
+      "rate": 1,
+      "buffering": ["punctuation"],
+      "init_kwargs": {
+        "voice": "en_US-libritts-high",
+        "voice_rate": 1.0,
+        "voice_speaker": "p339",
+        "sample_rate_hz": 22050,
+        "model_cache": "/data/models/piper",
+        "name": "PiperTTS"
+      }
+    },
+    {
+      "name": "RateLimit",
+      "type": "RateLimit",
+      "connections": [
+        { "to": "WebAudioOut", "input": 0, "output": 0 }
+      ],
+      "layout_grid": {},
+      "layout_node": { "x": 1740, "y": 150 },
+      "rate": 1.0,
+      "chunk": 4800,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 1.0,
+        "chunk": 4800,
+        "drop_inputs": true,
+        "on_demand": false,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "WebAudioOut",
+      "type": "WebAudioOut",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": { "x": 1950, "y": 150 },
+      "init_kwargs": {}
+    }
+  ]
+}
