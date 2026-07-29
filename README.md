@@ -1,5 +1,9 @@
 # Advantech Edge Agent
 
+📢 **Edge Agent v3.0.0 is officially supporting Jetson Thor now!**
+
+**If you are using MIC-733 with Jetpack 6.0, please change the version by switching to the [tag v2.0.0](https://github.com/advantech-EdgeAI/Edge_Agent/tree/v2.0.0).**
+
 Advantech Edge Agent is an interactive sandbox designed to facilitate the rapid design and experimentation of automation agents, personal assistants, and edge AI systems. It seamlessly integrates multimodal Large Language Models (LLMs), speech and vision transformers, vector databases, prompt templates, and function calling with live sensors and I/O. Optimized for deployment on Jetson devices, it offers on-device computing, low-latency streaming, and unified memory for enhanced performance.
 
 <a href="https://youtu.be/bKSFZuh24Yc"><img src="./images/media/sample_case.gif"></a>
@@ -25,32 +29,22 @@ Advantech Edge Agent is built on Agent Studio from Jetson AI Lab, enhanced with 
 
 | Name            | Description                                           |
 |-----------------|-------------------------------------------------------|
-| Product         | MIC-733-AO5A1 (32GB) / MIC-733-AO6A1 (64GB)           |
-| JetPack Version | ⚠️ V6.0GA (***ONLY Verified on JetPack6.0***)         |
-| Storage         | 512GB NVMe SSD (recommended)                          |
+| Product         | MIC-742-AT / MIC-743-AT           |
+| JetPack Version | V7.0         |
+| Storage         | Pre-installed 1TB SSD (no extra SSD is needed)   |
 | USB Camera      | Logitech c270 HD webcam or any V4L2 compatible camera |
 | Internet        | Required during installation                          |
 
-### Short Video Installation Guide
-
-Our short video tutorial walks you through the steps for installation and configuration. Click it to learn more.
-
-<a href="https://www.youtube.com/watch?v=zIH040_c2yg"><img src="./images/media/install_tutorial_w_SSD.gif"></a>
-
 ### 1. Clone this Repository
 
-Clone this repository to your JetPack 6 device:
+Clone this repository to your JetPack 7 device:
 
 ```sh
 git clone https://github.com/advantech-EdgeAI/edge_agent.git
 cd edge_agent
 ```
 
-### 2. Docker Service Installation 
-
-Starting from JetPack 6, the SDK Manager does not install Docker service by default.
-
-#### Checking on Docker Service
+### 2. Docker Service Installation
 
 Check the Docker version to ensure that the Docker service is installed and running properly on your system:
 
@@ -58,54 +52,68 @@ Check the Docker version to ensure that the Docker service is installed and runn
 docker --version
 ```
 
-If Docker is not available, run the following script to install and enable it on your JetPack 6 device:
+If Docker is not available, follow [the guide](https://github.com/advantech-EdgeAI/VSS/issues/2) to install Docker.
+
+###  3. Pull the Docker Image
+
+The image is ~135 GB. Ensure your SSD has sufficient free space before pulling.
 
 ```bash
-bash init-dockerd-jetson-jp6.sh
+docker pull ispsae/nano_llm:r38.2.0_jp7
+docker tag  ispsae/nano_llm:r38.2.0_jp7 edge_agent:v2-vllm
+docker rmi ispsae/nano_llm:r38.2.0_jp7
 ```
 
-###  3. Setup Extended Storage - NVMe SSD
+### 4. Extract the Data Package
 
-#### Physical Installation
-
-1. Power off your Jetson device and disconnect peripherals.
-2. Insert the NVMe SSD into the carrier board, ensuring it's properly seated and secured.
-3. Reconnect peripherals and power on the device.
-4. Verify the SSD is recognized by running:
-
-   ```bash
-   lspci
-   ```
-
-   You should see an entry similar to:
-   ```
-   0007:01:00.0 Non-Volatile memory controller: Marvell Technology Group Ltd. Device 1322 (rev 02)
-   ```
-
-#### Create ext4 Filesystem on SSD and Mount it to `/ssd` by Default
-
- - Follow the 'Format and Set Up Auto-mount' section in this [link](https://www.jetson-ai-lab.com/tutorials/ssd-docker-setup/).
-
-#### Migrate Docker Directory to SSD
-
- 1. The SSD directory on the root should be exactly as `/ssd` (not `/SSD`). Please follow the next step.
- 2. Follow the 'Migrate Docker Directory to SSD' section in this [link](https://www.jetson-ai-lab.com/tutorials/ssd-docker-setup/).
-
-
-#### Optional Setup Steps
-
- You can follow these ***optional*** steps to verify that the SSD is configured correctly for Docker images and disable Apport reporting:
-
-- [Test Docker on SSD](https://github.com/advantech-EdgeAI/edge_agent/issues/5)
-- [Disable Apport Reporting](https://github.com/advantech-EdgeAI/edge_agent/issues/6)
-
-### 4. Download Essential Data
-
-Run the following script to download Docker images and the necessary packages:
+The data package contains pre-compiled AI models, TensorRT caches, demo videos, and datasets (~28 GB).
 
 ```bash
-bash download-EA-JC-2ssd.sh
+mkdir -p data nanoowl/data
+docker run --rm \
+  -v $(pwd)/data:/data \
+  -v $(pwd)/nanoowl/data:/nanoowl_data \
+  ispsae/edge_agent_data:jp7
 ```
+
+After extraction, your project structure will look like:
+
+```
+edge_agent/
+├── data/
+│   ├── models/
+│   │   ├── mlc/dist/      ← pre-compiled MLC LLM models
+│   │   ├── clip/          ← TensorRT vision tower cache
+│   │   ├── whisper/       ← Whisper speech models
+│   │   └── piper/         ← Piper TTS voices
+│   ├── nanodb/            ← vector database for RAG demos
+│   ├── videos/demo/       ← demo video files
+│   └── ...
+├── nanoowl/data/
+│   └── owlv2.engine       ← OWL-ViT TensorRT engine
+├── start.sh
+└── .env
+```
+
+### 5. Configure Hugging Face Access Token
+
+Please go to Hugging Face official website to [generate your personal access token](https://huggingface.co/settings/tokens) for pulling models from Hugging Face. You will only need to generate the one with ***read*** permission.
+
+![](./images/media/create_access_token.png)
+
+Copy `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set your token:
+
+```bash
+HUGGINGFACE_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Please keep your token safely. Do not share it with others.
 
 ## Usage / Quick Start
 
@@ -114,24 +122,32 @@ bash download-EA-JC-2ssd.sh
 Start the Edge Agent, and the backend will listen on port 8050 on localhost:
 
 ```bash
-bash startEA.sh
+bash start.sh
 ```
 
-### 2. Start Working on Edge Agent Through Web UI
+After ~20 seconds, open a browser and go to:
 
-Once the Edge Agent starts up successfully, open another terminal to launch the web browser (Chromium):
+```
+https://<YOUR_DEVICE_IP>:8050
+```
+
+### 2. Check the Log
 
 ```bash
-bash launch-chromium.sh
+docker logs -f edge_agent_run
 ```
-
-At this stage, you should have successfully started the Edge Agent and accessed it via Chromium.
 
 ### 3. Start a Quick Demo Project
 
 Load a preset project for a quick demo. Click to learn more.
 
 <a href="https://www.youtube.com/watch?v=XNr-aNQwoPc"><img src="./images/media/quick_demo.gif"></a>
+
+### 4. Stop Edge Agent
+
+```bash
+docker stop edge_agent_run
+```
 
 ## Troubleshooting
 
