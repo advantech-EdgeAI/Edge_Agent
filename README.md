@@ -59,9 +59,9 @@ If Docker is not available, follow [the guide](https://github.com/advantech-Edge
 The image is ~135 GB. Ensure your SSD has sufficient free space before pulling.
 
 ```bash
-docker pull ispsae/nano_llm:r38.2.0_jp7
-docker tag  ispsae/nano_llm:r38.2.0_jp7 edge_agent:v2-vllm
-docker rmi ispsae/nano_llm:r38.2.0_jp7
+docker pull ispsae/nano_llm:jp7-universal
+docker tag  ispsae/nano_llm:jp7-universal edge_agent:v2-vllm
+docker rmi ispsae/nano_llm:jp7-universal
 ```
 
 ### 4. Extract the Data Package
