@@ -1,0 +1,89 @@
+{
+ "single": {
+  "hidden": [],
+  "positions": {
+   "AgentLoop": {
+    "x": 235,
+    "y": -235
+   },
+   "PerformanceMonitor": {
+    "x": 32,
+    "y": 29
+   },
+   "SafetyReview": {
+    "x": 459,
+    "y": -334
+   },
+   "Skills_Hub": {
+    "x": 464,
+    "y": -238
+   },
+   "Tools_Hub": {
+    "x": 466,
+    "y": -144
+   },
+   "UserPrompt": {
+    "x": 37,
+    "y": -157
+   },
+   "VideoOutput": {
+    "x": 1003,
+    "y": -22
+   },
+   "VideoSource": {
+    "x": 765,
+    "y": -74
+   },
+   "camera1": {
+    "x": 998,
+    "y": -99
+   },
+   "vLLM": {
+    "x": 460,
+    "y": -29
+   }
+  }
+ },
+ "auto": {
+  "positions": {
+   "UserPrompt": {
+    "x": 33,
+    "y": -170
+   },
+   "AgentLoop": {
+    "x": 243,
+    "y": -235
+   },
+   "Tools_Hub": {
+    "x": 567,
+    "y": -153
+   },
+   "Skills_Hub": {
+    "x": 564,
+    "y": -217
+   },
+   "SafetyReview": {
+    "x": 562,
+    "y": -282
+   },
+   "vLLM": {
+    "x": 570,
+    "y": -69
+   },
+   "VideoOutput": {
+    "x": 923,
+    "y": -103
+   },
+   "camera1": {
+    "x": 925,
+    "y": -200
+   },
+   "PerformanceMonitor": {
+    "x": 31,
+    "y": -23
+   }
+  },
+  "hidden": [],
+  "routes": {}
+ }
+}

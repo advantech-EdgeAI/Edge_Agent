@@ -1,0 +1,109 @@
+{
+  "version": "24.6.1",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 14
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "UserPrompt",
+      "type": "UserPrompt",
+      "connections": [
+        {
+          "to": "Cosmos3Generator",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "layout_node": {
+        "x": 50,
+        "y": 100
+      },
+      "init_kwargs": {}
+    },
+    {
+      "name": "Image_Input",
+      "type": "Image_Input",
+      "connections": [
+        {
+          "to": "Cosmos3Generator",
+          "input": 1,
+          "output": 0
+        }
+      ],
+      "layout_grid": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "layout_node": {
+        "x": 50,
+        "y": 300
+      },
+      "init_kwargs": {
+        "name": "Image_Input"
+      }
+    },
+    {
+      "name": "Cosmos3Generator",
+      "type": "Cosmos3Generator",
+      "connections": [
+        {
+          "to": "VideoOutput",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 4,
+        "w": 4,
+        "h": 10
+      },
+      "layout_node": {
+        "x": 300,
+        "y": 100
+      },
+      "init_kwargs": {
+        "model": "nvidia/Cosmos3-Nano",
+        "height": 720,
+        "width": 1280,
+        "num_frames": 24,
+        "drop_inputs": true,
+        "name": "Cosmos3Generator"
+      }
+    },
+    {
+      "name": "VideoOutput",
+      "type": "VideoOutput",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 15,
+        "w": 4,
+        "h": 4
+      },
+      "layout_node": {
+        "x": 550,
+        "y": 100
+      },
+      "init_kwargs": {
+        "name": "VideoOutput",
+        "drop_inputs": true
+      }
+    }
+  ]
+}

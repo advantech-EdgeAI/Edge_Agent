@@ -1,0 +1,407 @@
+{
+  "version": "24.7",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 11
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 18,
+        "w": 8,
+        "h": 5
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "VideoOverlay",
+      "type": "VideoOverlay",
+      "connections": [
+        {
+          "to": "VideoOutput",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1432.5714285714287,
+        "y": 170
+      },
+      "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+      "font_size": 32.0,
+      "prefix_text": null,
+      "color": "#78d715",
+      "background": "#000000",
+      "opacity": 0.4,
+      "x": 5,
+      "y": 5,
+      "line_spacing": 38,
+      "line_length": null,
+      "return_copy": true,
+      "init_kwargs": {
+        "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "font_size": 32.0,
+        "color": "#78d715",
+        "background": "#000000",
+        "opacity": 0.4,
+        "x": 5,
+        "y": 5,
+        "line_spacing": 38,
+        "return_copy": true,
+        "name": "VideoOverlay"
+      }
+    },
+    {
+      "name": "AutoPrompt_ICL",
+      "type": "AutoPrompt_ICL",
+      "connections": [
+        {
+          "to": "vLLM",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 988.3333333333334,
+        "y": 119
+      },
+      "template": "<reset><image>This is a close-up of an industrial signal tower. Look only at the TOP lamp, which is red. Is the top red lamp glowing (bright red or orange-red) right now? Answer \"Yes\" or \"No\".",
+      "seq_replace_mode": true,
+      "ROI": true,
+      "ROI_Coordinates": "0.17,0.28,0.31,0.56",
+      "init_kwargs": {
+        "template": "<reset><image>This is a close-up of an industrial signal tower. Look only at the TOP lamp, which is red. Is the top red lamp glowing (bright red or orange-red) right now? Answer \"Yes\" or \"No\".",
+        "seq_replace_mode": true,
+        "name": "AutoPrompt_ICL",
+        "ROI": true,
+        "ROI_Coordinates": "0.17,0.28,0.31,0.56"
+      }
+    },
+    {
+      "name": "vLLM",
+      "type": "vLLM",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 2
+        },
+        {
+          "to": "One_Step_Alert",
+          "input": 0,
+          "output": 2
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 11,
+        "w": 4,
+        "h": 12
+      },
+      "layout_node": {
+        "x": 1200,
+        "y": 81.33333333333333
+      },
+      "max_output_tokens": 60,
+      "system_prompt": "You are a helpful and friendly AI assistant.",
+      "thinking": "auto",
+      "thinking_token_budget": 0,
+      "temperature": null,
+      "top_p": null,
+      "top_k": null,
+      "min_p": null,
+      "presence_penalty": null,
+      "repetition_penalty": null,
+      "strict_tools": false,
+      "video_mode": "mp4",
+      "video_fps": 8,
+      "init_kwargs": {
+        "max_output_tokens": 60,
+        "drop_inputs": true,
+        "system_prompt": "You are a helpful and friendly AI assistant.",
+        "name": "vLLM",
+        "model": "Qwen/Qwen3-VL-8B-Instruct-FP8",
+        "gpu_memory_utilization": 0.3,
+        "max_model_len": 8192,
+        "video_mode": "mp4",
+        "video_fps": 8,
+        "extra_engine_args": "{\"max_num_seqs\": 2}"
+      }
+    },
+    {
+      "name": "One_Step_Alert",
+      "type": "One_Step_Alert",
+      "connections": [
+        {
+          "to": "PiperTTS",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "EventRecorder",
+          "input": 1,
+          "output": 1
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1438,
+        "y": -0.3333333333333337
+      },
+      "check_time": 3,
+      "alert_keyword": "yes",
+      "normal_keyword": "no",
+      "warning_message_text": "Warning: The signal tower light is red.",
+      "alert": true,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "check_time": 3,
+        "alert": true,
+        "alert_keyword": "yes",
+        "normal_keyword": "no",
+        "warning_message_text": "Warning: The signal tower light is red.",
+        "drop_inputs": true,
+        "name": "One_Step_Alert"
+      }
+    },
+    {
+      "name": "VideoSource",
+      "type": "VideoSource",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "RateLimit",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "EventRecorder",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 592,
+        "y": 240.66666666666666
+      },
+      "init_kwargs": {
+        "video_input": "/data/videos/demo/SignalTower_C0132.mp4",
+        "video_input_width": 1280,
+        "video_input_height": 720,
+        "loops": -1,
+        "return_copy": true,
+        "return_tensors": "cuda",
+        "name": "VideoSource"
+      }
+    },
+    {
+      "name": "RateLimit",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "AutoPrompt_ICL",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 796,
+        "y": 110.66666666666667
+      },
+      "rate": 15.0,
+      "chunk": null,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 15.0,
+        "drop_inputs": true,
+        "on_demand": true,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "PiperTTS",
+      "type": "PiperTTS",
+      "connections": [
+        {
+          "to": "RateLimit_1",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1636.3333333333333,
+        "y": 8
+      },
+      "voice": "en_US-libritts-high",
+      "speaker": "p339",
+      "rate": 1,
+      "buffering": [
+        "punctuation"
+      ],
+      "init_kwargs": {
+        "voice": "en_US-libritts-high",
+        "voice_rate": 1.0,
+        "voice_speaker": "p339",
+        "sample_rate_hz": 22050,
+        "model_cache": "/data/models/piper",
+        "name": "PiperTTS"
+      }
+    },
+    {
+      "name": "RateLimit_1",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "WebAudioOut",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1837.3333333333333,
+        "y": 8
+      },
+      "rate": 1.0,
+      "chunk": 4800,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 1.0,
+        "chunk": 4800,
+        "drop_inputs": true,
+        "on_demand": false,
+        "name": "RateLimit_1"
+      }
+    },
+    {
+      "name": "WebAudioOut",
+      "type": "WebAudioOut",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 2037,
+        "y": 19.333333333333332
+      },
+      "init_kwargs": {}
+    },
+    {
+      "name": "VideoOutput",
+      "type": "VideoOutput",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 11
+      },
+      "layout_node": {
+        "x": 1644,
+        "y": 177.42857142857142
+      },
+      "ROI": true,
+      "ROI_Coordinates": "0.17,0.28,0.31,0.56",
+      "ROI_color": "#ff0000",
+      "preview_max_side": 0,
+      "mjpeg_port": 10000,
+      "init_kwargs": {
+        "video_output": "display://",
+        "ROI": true,
+        "ROI_Coordinates": "0.17,0.28,0.31,0.56",
+        "name": "VideoOutput"
+      }
+    },
+    {
+      "name": "EventRecorder",
+      "type": "EventRecorder",
+      "connections": [
+        {
+          "to": "EventSummarizer",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1651.5714285714287,
+        "y": 287
+      },
+      "pre_seconds": 5.0,
+      "post_seconds": 3.0,
+      "max_seconds": 60.0,
+      "record_fps": 10.0,
+      "output_dir": "/data/events",
+      "event_type": "燈柱紅燈",
+      "encoder": "h264_nvenc",
+      "init_kwargs": {
+        "name": "EventRecorder",
+        "event_type": "燈柱紅燈"
+      }
+    },
+    {
+      "name": "EventSummarizer",
+      "type": "EventSummarizer",
+      "connections": [
+        {
+          "to": "EventLog",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "vLLM",
+          "input": 0,
+          "output": 1
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1848,
+        "y": 283.42857142857144
+      },
+      "scene_context": "畫面是工廠裡的一台設備，左側有一支信號燈柱（由上到下是紅、黃、綠燈）。",
+      "num_frames": 16,
+      "max_output_tokens": 400,
+      "prompt": "這段影片是一個事件的錄影片段，事件是：{event_type}。片段長約 {duration} 秒{truncated_note}。{scene_context}\n請只描述畫面上看得到的事，不確定就說不確定，不要推測原因，也不要加入畫面上沒有的人或燈號。使用台灣繁體中文，照下面格式回答（過程寫 3 到 6 點，只寫有變化的時間點）：\n摘要：一句話，30 字以內\n過程：\n- 約第 N 秒 發生什麼\n結果：事件結束時的狀態",
+      "timeout_seconds": 120.0,
+      "max_queue": 3,
+      "init_kwargs": {
+        "name": "EventSummarizer",
+        "scene_context": "畫面是工廠裡的一台設備，左側有一支信號燈柱（由上到下是紅、黃、綠燈）。"
+      }
+    },
+    {
+      "name": "EventLog",
+      "type": "EventLog",
+      "connections": [],
+      "layout_grid": {
+        "x": 0,
+        "y": 11,
+        "w": 8,
+        "h": 7
+      },
+      "layout_node": {
+        "x": 2049,
+        "y": 296.42857142857144
+      },
+      "output_dir": "/data/events",
+      "keep": 50,
+      "init_kwargs": {
+        "name": "EventLog"
+      }
+    }
+  ]
+}

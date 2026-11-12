@@ -6,13 +6,13 @@
         "x": 0,
         "y": 0,
         "w": 8,
-        "h": 14
+        "h": 11
       }
     },
     "TerminalPlugin": {
       "layout_grid": {
         "x": 0,
-        "y": 36,
+        "y": 11,
         "w": 8,
         "h": 6
       }
@@ -31,8 +31,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1131,
-        "y": 444
+        "x": 1092.4285714285713,
+        "y": 409
       },
       "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
       "font_size": 32.0,
@@ -69,11 +69,13 @@
         "h": 15
       },
       "layout_node": {
-        "x": 1350,
-        "y": 465
+        "x": 1291,
+        "y": 412.42857142857144
       },
       "ROI": false,
       "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "mjpeg_port": 10000,
       "init_kwargs": {
         "video_output": "webrtc://@:8554/output",
         "video_output_codec": "null",
@@ -120,13 +122,13 @@
       "connections": [],
       "layout_grid": {
         "x": 5,
-        "y": 14,
+        "y": 17,
         "w": 3,
-        "h": 10
+        "h": 15
       },
       "layout_node": {
-        "x": 786,
-        "y": 67
+        "x": 658.4285714285714,
+        "y": 110
       },
       "text_color": "white",
       "partial_color": "dodgerblue",
@@ -150,8 +152,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 304.1111111111111,
-        "y": 231
+        "x": 261.14285714285717,
+        "y": 230
       },
       "rate": 15.0,
       "chunk": null,
@@ -174,8 +176,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 682,
-        "y": 203
+        "x": 654,
+        "y": 239.14285714285714
       },
       "template": "<reset><text><image>Check the current the status of the door. Is it open or closed?",
       "seq_replace_mode": true,
@@ -194,11 +196,6 @@
       "type": "NanoDB_Fashion",
       "connections": [
         {
-          "to": "WebClient",
-          "input": 0,
-          "output": 0
-        },
-        {
           "to": "AutoPrompt_ICL",
           "input": 0,
           "output": 1
@@ -210,14 +207,14 @@
         }
       ],
       "layout_grid": {
-        "x": 0,
-        "y": 14,
-        "w": 5,
-        "h": 10
+        "x": 8,
+        "y": 15,
+        "w": 4,
+        "h": 17
       },
       "layout_node": {
-        "x": 480,
-        "y": 33
+        "x": 454.57142857142856,
+        "y": 112.85714285714286
       },
       "top_k": 16,
       "search_time": "door_rag",
@@ -250,8 +247,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 920,
-        "y": 173
+        "x": 884,
+        "y": 189.85714285714286
       },
       "max_new_tokens": 128,
       "min_new_tokens": -1,

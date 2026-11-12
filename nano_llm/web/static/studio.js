@@ -23,10 +23,29 @@ include('/static/drawflow.min.js');
 include('/static/webrtc.js');
 include('/static/websocket.js');
 include('/static/debounce.js');
+include('/static/dialog_options.js');
 include('/static/audio.js');
+include('/static/markdown.js');
+include('/static/perf_monitor.js');
+include('/static/event_log.js');
+include('/static/object_tracker.js');
+include('/static/track_boxes.js');
+include('/static/output_bus.js');
+include('/static/chat_view.js');
 include('/static/grid.js');
 include('/static/menu.js');
 include('/static/alert.js');
+
+// Dual-screen exhibition display (2026-09-19): ?view=sensor (old name ?view=camera) shows only the widgets
+// that render a live picture; ?view=pipeline shows everything else (node graph,
+// chat, controls). No 'view' param (the everyday single-screen dev URL) leaves
+// viewMode null, and every view-mode check below treats that as "show everything,
+// stay fully interactive" - today's existing behavior, completely unchanged. See
+// docs/superpowers/specs/2026-09-19-dual-screen-exhibition-display-design.md.
+// Sensor view: docs/superpowers/specs/2026-10-13-sensor-view-design.md.
+var _viewParams = new URLSearchParams(window.location.search);
+var viewMode = normalizeViewMode(_viewParams.get('view'));   // sensor_view.js (?view=camera -> 'sensor')
+var viewEditUnlocked = (_viewParams.get('edit') === '1');
 
 
 function loadStudio(config) {
@@ -34,9 +53,16 @@ function loadStudio(config) {
         
   enumerateAudioDevices();
   openAudioDevices();
+  enumerateVideoDevices();
 
   addGrid();
-  
+
+  // the booth screen shows only the logo; &edit=1 brings the menus back with drag/resize
+  if( viewMode === 'sensor' && !viewEditUnlocked )
+    document.body.classList.add('sensor-locked');
+  if( viewMode !== 'pipeline' )
+    startSensorSignalWatch();   // sensor_view.js
+
   //setTimeout( ()=>{ debugger }, 5000);
 }
 
@@ -84,7 +110,11 @@ function onWebsocketMsg(payload, type, metadata) {
     if( 'presets' in payload ) {
       setPresets(payload['presets']);
     }
-    
+
+    if( 'current_preset' in payload ) {
+      setCurrentPreset(payload['current_preset']);
+    }
+
     if( 'alert' in payload ) {
       addAlert(payload['alert']);
     }
@@ -95,7 +125,11 @@ function onWebsocketMsg(payload, type, metadata) {
 }
 
 function removeAll(name) {
-  sendWebsocket({'reset': {'plugins': true, 'globals': true}});
+  // Restart into an empty pipeline instead of removing every plugin in place, which hung
+  // the whole process on 2026-10-15 (docs/superpowers/specs/2026-10-15-studio-self-recovery-design.md sec. 5).
+  sendWebsocket({'restart_empty': {}});
+  showReloadMessage();
+  pollForReload();
 }
 
 function clearCache(name) {
@@ -106,8 +140,21 @@ function savePreset(name) {
   sendWebsocket({'save': name});
 }
 
-function autoSavePreset(name) {
-  sendWebsocket({'auto_save': name});
+function setCurrentPreset(name) {
+  // Default the Save dialogs to overwriting the preset that's actually loaded,
+  // instead of always offering the hardcoded "MyAgent" placeholder. Leave the
+  // fields alone when nothing is loaded (a fresh/discarded pipeline) so they
+  // keep their existing value rather than showing a blank or stale name.
+  if( !name )
+    return;
+
+  const saveAgentName = document.getElementById('saveAgentName');
+  if( saveAgentName )
+    saveAgentName.value = name;
+
+  const saveasAgentName = document.getElementById('saveasAgentName');
+  if( saveasAgentName )
+    saveasAgentName.value = name;
 }
 
 function loadPreset(name) {

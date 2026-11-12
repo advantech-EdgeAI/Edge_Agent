@@ -1,0 +1,24 @@
+{
+ "auto": {
+  "positions": {
+   "UserPrompt": {
+    "x": 240,
+    "y": 119
+   },
+   "Image_Input": {
+    "x": 230,
+    "y": 210
+   },
+   "Cosmos3Generator": {
+    "x": 482,
+    "y": 151
+   },
+   "VideoOutput": {
+    "x": 757,
+    "y": 154
+   }
+  },
+  "hidden": [],
+  "routes": {}
+ }
+}

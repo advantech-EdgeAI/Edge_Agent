@@ -11,7 +11,10 @@ var audioOutputWorker;  // AudioWorkletNode
 var audioOutputMuted = false;
 var remoteCameraVideo;  // 隱藏的 <video> 元素，用來播放攝影機的 MediaStream
 var remoteCameraCanvas; // 隱藏的 <canvas> 元素，用來擷取靜態畫面
-var remoteCameraCaptureInterval; // 定期擷取畫面送出的 setInterval id（VAD 自動判斷語音時，讓 AutoPrompt_ICL 每次都拿到最新畫面）
+var remoteCameraCaptureInterval; // 定期擷取畫面送出的 setInterval id（鏡頭串流開啟時，讓 AutoPrompt_ICL 每次都拿到最新畫面）
+var videoInputDeviceId;   // 使用者在 Video 設定裡選擇的攝影機 deviceId（undefined = 瀏覽器預設）
+var videoInputEnabled = false; // 視訊鏡頭按鈕目前的狀態（隱私開關，預設關閉，需要使用者主動打開）
+var webVideoInPluginCount = 0; // 目前圖上有幾個 WebVideoIn plugin，由 grid.js 的 addPlugin()/removePlugins() 維護
 
 function checkMediaDevices() {
   return (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !navigator.mediaDevices.enumerateDevices) ? false : true;
@@ -46,6 +49,41 @@ function enumerateAudioDevices() {
 				selectOutput.add(new Option('browser has no audio outputs available'));
 		});
 	}).catch(reportError);
+}
+
+function enumerateVideoDevices() {
+	var selectInput = document.getElementById('video-input-select');
+
+	if( !checkMediaDevices() ) {
+		selectInput.add(new Option('use HTTPS to enable browser video'));
+		return;
+	}
+
+	// 跟 enumerateAudioDevices() 一樣的做法：只是要一次權限、順便列出裝置清單、順便讓瀏覽器
+	// 記住這個來源已經授權過鏡頭（之後 ensureRemoteCameraOpen() 就不會再跳一次授權視窗）。
+	// 不保留這條 stream —— 真正開鏡頭串流的時機點是 WebVideoIn plugin 存在 + 視訊開關打開，
+	// 見 updateRemoteCameraState()，不是頁面載入的當下。
+	navigator.mediaDevices.getUserMedia({ audio: false, video: true }).then((stream) => {
+		navigator.mediaDevices.enumerateDevices().then((devices) => {
+			stream.getTracks().forEach(track => track.stop()); // close the device opened to get permissions
+			devices.forEach((device) => {
+				if( device.kind == 'videoinput' )
+					selectInput.add(new Option(device.label, device.deviceId));
+			});
+
+			if( selectInput.options.length == 0 )
+				selectInput.add(new Option('browser has no video inputs available'));
+		});
+	}).catch(reportError);
+}
+
+function onVideoInputDeviceChange() {
+	videoInputDeviceId = document.getElementById('video-input-select').value;
+	// 如果鏡頭現在正在串流中，換裝置要立刻生效（releaseRemoteCamera() + 重新開一次）
+	if( videoInputEnabled && webVideoInPluginCount > 0 ) {
+		releaseRemoteCamera();
+		updateRemoteCameraState();
+	}
 }
 
 function openAudioDevices(inputDeviceId, outputDeviceId) {
@@ -159,12 +197,24 @@ function onAudioOutput(samples) {
 }*/
 
 function ensureRemoteCameraOpen(onReady) {
-	if( remoteCameraVideo ) {
+	// Reuse only if the cached element is still actually attached AND its stream is still
+	// live - a server-triggered plugin-graph resync (removePlugins()/addPlugins(), which
+	// happens without a full page navigation) can call widgetEl.remove() on the very
+	// <video data-role="web-video-in"> element remoteCameraVideo points at, and/or the
+	// browser can revoke camera access out from under an already-open stream. Either way
+	// the plain truthy check below used to treat that as "still open" and skip re-acquiring
+	// permission/a stream entirely - silently leaving no visible preview and no camera
+	// frames ever captured again, with no error surfaced anywhere.
+	const trackLive = remoteCameraVideo && remoteCameraVideo.srcObject &&
+		remoteCameraVideo.srcObject.getVideoTracks().some(t => t.readyState === 'live');
+	if( remoteCameraVideo && document.body.contains(remoteCameraVideo) && trackLive ) {
 		if( onReady )
 			onReady();
-		return;  // 已經開過了，不重複要權限
+		return;  // 已經開過了，而且對應的 DOM 元素和視訊軌道都還活著，不重複要權限
 	}
-	navigator.mediaDevices.getUserMedia({ audio: false, video: true }).then((stream) => {
+	remoteCameraVideo = null;  // stale (detached element and/or dead track) - discard, reacquire below
+	const constraints = { audio: false, video: videoInputDeviceId ? { deviceId: { exact: videoInputDeviceId } } : true };
+	navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
 		// 優先重複使用 WebVideoIn plugin 產生的面板 <video> 元素（同一顆元素兼做預覽顯示
 		// 跟下面 captureAndSendCameraFrame() 的擷取來源）；找不到（例如目前載入的
 		// pipeline/preset 沒有 WebVideoIn 這個 plugin）就照舊建立隱藏的 detached video 元素。
@@ -205,25 +255,75 @@ function captureAndSendCameraFrame() {
 	}, 'image/jpeg', 0.85);
 }
 
+// 停止定期送畫面、關掉軌道、把面板收回「未啟用」狀態。鏡頭是否重新開啟完全交給
+// updateRemoteCameraState() 之後的判斷，這裡只負責釋放。
+function releaseRemoteCamera() {
+	if( remoteCameraCaptureInterval ) {
+		clearInterval(remoteCameraCaptureInterval);
+		remoteCameraCaptureInterval = undefined;
+	}
+	if( remoteCameraVideo ) {
+		if( remoteCameraVideo.srcObject ) {
+			remoteCameraVideo.srcObject.getTracks().forEach(track => track.stop());
+			remoteCameraVideo.srcObject = null;
+		}
+		// 如果是接在 WebVideoIn 面板上的 <video> 元素（id 是 "..._video"），把畫面收起來、
+		// 恢復顯示狀態文字；detached 的隱藏元素（沒有 id）就不用管，反正本來就看不到。
+		if( remoteCameraVideo.id && remoteCameraVideo.id.endsWith('_video') ) {
+			remoteCameraVideo.style.display = 'none';
+			const statusEl = document.getElementById(remoteCameraVideo.id.replace(/_video$/, '_status'));
+			if( statusEl ) {
+				statusEl.textContent = 'Camera off';
+				statusEl.style.display = 'flex';
+			}
+		}
+	}
+	remoteCameraVideo = null;
+}
+
+function startRemoteCameraStreaming() {
+	ensureRemoteCameraOpen(() => {
+		captureAndSendCameraFrame();
+		if( !remoteCameraCaptureInterval )
+			remoteCameraCaptureInterval = setInterval(captureAndSendCameraFrame, 1000);
+	});
+}
+
+// 唯一判斷「要不要真的開鏡頭串流」的地方：WebVideoIn 節點存在於圖上，
+// 且視訊開關是打開的。兩個條件的來源（grid.js 的 plugin add/remove、
+// toggleVideoInput()）都呼叫這裡，不各自決定要不要開鏡頭。
+function updateRemoteCameraState() {
+	if( webVideoInPluginCount > 0 && videoInputEnabled )
+		startRemoteCameraStreaming();
+	else
+		releaseRemoteCamera();
+}
+
+// 由 grid.js 的 addPlugin()/removePlugins() 呼叫，回報目前圖上有幾個 WebVideoIn plugin。
+function setWebVideoInCount(count) {
+	webVideoInPluginCount = count;
+	updateRemoteCameraState();
+}
+
+function toggleVideoInput() {
+	var button = document.getElementById('video-input-mute');
+	videoInputEnabled = !videoInputEnabled;
+	console.log(`toggleVideoInput(${videoInputEnabled})`);
+	if( videoInputEnabled )
+		button.classList.replace('bi-camera-video-off-fill', 'bi-camera-video-fill');
+	else
+		button.classList.replace('bi-camera-video-fill', 'bi-camera-video-off-fill');
+	updateRemoteCameraState();
+}
+
 function muteAudioInput() {
 	var button = document.getElementById('audio-input-mute');
 	const muted = button.classList.contains('bi-mic-fill');
 	console.log(`muteAudioInput(${muted})`);
-	if( muted ) {
+	if( muted )
 		button.classList.replace('bi-mic-fill', 'bi-mic-mute-fill');
-		if( remoteCameraCaptureInterval ) {
-			clearInterval(remoteCameraCaptureInterval);
-			remoteCameraCaptureInterval = undefined;
-		}
-	} else {
+	else
 		button.classList.replace('bi-mic-mute-fill', 'bi-mic-fill');
-		ensureRemoteCameraOpen(() => {
-			captureAndSendCameraFrame();
-			// 現在改成由 VADFilter 自動偵測講話結束（不再需要按靜音才觸發），
-			// 所以畫面也要跟著定期更新，讓每次自動判斷出的問題都能配到當下的最新畫面。
-			remoteCameraCaptureInterval = setInterval(captureAndSendCameraFrame, 1000);
-		});
-	}
 	if( audioInputTrack != undefined )
 		audioInputTrack.enabled = !muted;
 }

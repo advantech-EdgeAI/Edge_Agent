@@ -6,25 +6,16 @@
         "x": 0,
         "y": 0,
         "w": 8,
-        "h": 14
+        "h": 11
       }
     },
     "TerminalPlugin": {
       "layout_grid": {
         "x": 0,
-        "y": 14,
+        "y": 11,
         "w": 8,
         "h": 6
       }
-    },
-    "VideoOutput": {
-      "layout_grid": {}
-    },
-    "NanoLLM_ICL": {
-      "layout_grid": {}
-    },
-    "TextStream": {
-      "layout_grid": {}
     }
   },
   "plugins": [
@@ -41,11 +32,6 @@
           "to": "One_Step_Alert",
           "input": 0,
           "output": 2
-        },
-        {
-          "to": "WebClient",
-          "input": 0,
-          "output": 4
         }
       ],
       "layout_grid": {
@@ -55,8 +41,8 @@
         "h": 14
       },
       "layout_node": {
-        "x": 1079.2857142857142,
-        "y": 300.7142857142857
+        "x": 1028,
+        "y": 295.1111111111111
       },
       "max_new_tokens": 20,
       "min_new_tokens": -1,
@@ -90,11 +76,11 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1327.5,
-        "y": 214
+        "x": 1254,
+        "y": 207.11111111111111
       },
       "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-      "font_size": 32,
+      "font_size": 32.0,
       "prefix_text": null,
       "color": "#78d715",
       "background": "#000000",
@@ -106,7 +92,7 @@
       "return_copy": true,
       "init_kwargs": {
         "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-        "font_size": 32,
+        "font_size": 32.0,
         "color": "#78d715",
         "background": "#000000",
         "opacity": 0.4,
@@ -129,14 +115,14 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 591,
-        "y": 357.57142857142856
+        "x": 618,
+        "y": 336.3333333333333
       },
-      "rate": 10,
+      "rate": 10.0,
       "chunk": null,
       "drop_inputs": true,
       "init_kwargs": {
-        "rate": 10,
+        "rate": 10.0,
         "drop_inputs": true,
         "on_demand": true,
         "name": "RateLimit"
@@ -154,8 +140,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1410,
-        "y": 429.3333333333333
+        "x": 1442.2222222222222,
+        "y": 418
       },
       "voice": "en_US-libritts-high",
       "speaker": "p339",
@@ -165,7 +151,7 @@
       ],
       "init_kwargs": {
         "voice": "en_US-libritts-high",
-        "voice_rate": 1,
+        "voice_rate": 1.0,
         "voice_speaker": "p339",
         "sample_rate_hz": 22050,
         "model_cache": "/data/models/piper",
@@ -184,18 +170,18 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1519,
-        "y": 569.25
+        "x": 1638,
+        "y": 418
       },
-      "rate": 1,
+      "rate": 1.0,
       "chunk": 4800,
       "drop_inputs": true,
       "init_kwargs": {
-        "rate": 1,
+        "rate": 1.0,
         "chunk": 4800,
         "drop_inputs": true,
         "on_demand": false,
-        "name": "RateLimit"
+        "name": "RateLimit_1"
       }
     },
     {
@@ -204,8 +190,8 @@
       "connections": [],
       "layout_grid": {},
       "layout_node": {
-        "x": 1701.2222222222222,
-        "y": 453
+        "x": 1841,
+        "y": 426.8888888888889
       },
       "init_kwargs": {}
     },
@@ -221,8 +207,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1255,
-        "y": 570
+        "x": 1234.2222222222222,
+        "y": 411.3333333333333
       },
       "check_time": 5,
       "alert_keyword": "no",
@@ -282,8 +268,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 823,
-        "y": 361
+        "x": 818,
+        "y": 344.22222222222223
       },
       "template": "<reset>'''/data/images/forbidden_zone/forbidden_zone2.png''' In the above image, there is a red X-shaped area marked with tape on the ground. In the following image, check if any part of the red X shape is obstructed by an object, even partially.\nIn below image: <image> Can you see the entire X shape pattern?",
       "seq_replace_mode": true,
@@ -308,15 +294,17 @@
         "h": 11
       },
       "layout_node": {
-        "x": 1604.5,
-        "y": 233
+        "x": 1458.7777777777778,
+        "y": 207.11111111111111
       },
       "ROI": true,
       "ROI_Coordinates": "0.75,0.25,1,0.73",
+      "ROI_color": "#ff0000",
+      "mjpeg_port": 10000,
       "init_kwargs": {
         "video_output": "webrtc://@:8554/output",
         "ROI": true,
-        "ROI_Coordinates": "0,0,1,1",
+        "ROI_Coordinates": "0.75,0.25,1,0.73",
         "name": "VideoOutput"
       }
     }

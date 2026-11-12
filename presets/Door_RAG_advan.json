@@ -6,13 +6,13 @@
         "x": 0,
         "y": 0,
         "w": 8,
-        "h": 14
+        "h": 11
       }
     },
     "TerminalPlugin": {
       "layout_grid": {
         "x": 0,
-        "y": 46,
+        "y": 11,
         "w": 8,
         "h": 6
       }
@@ -36,8 +36,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 304.1111111111111,
-        "y": 231
+        "x": 171.42857142857142,
+        "y": 226
       },
       "rate": 15.0,
       "chunk": null,
@@ -60,8 +60,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 682,
-        "y": 203
+        "x": 583.4285714285714,
+        "y": 229
       },
       "template": "<reset><text><image>Check the current the status of the door. Is it open or closed?",
       "seq_replace_mode": true,
@@ -80,11 +80,6 @@
       "type": "NanoDB_Fashion",
       "connections": [
         {
-          "to": "WebClient",
-          "input": 0,
-          "output": 0
-        },
-        {
           "to": "AutoPrompt_ICL",
           "input": 0,
           "output": 1
@@ -96,14 +91,14 @@
         }
       ],
       "layout_grid": {
-        "x": 0,
+        "x": 8,
         "y": 14,
-        "w": 5,
-        "h": 10
+        "w": 4,
+        "h": 19
       },
       "layout_node": {
-        "x": 480,
-        "y": 33
+        "x": 362,
+        "y": 108.85714285714286
       },
       "top_k": 16,
       "search_time": "door_rag",
@@ -136,8 +131,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 920,
-        "y": 173
+        "x": 807,
+        "y": 179.42857142857142
       },
       "max_new_tokens": 128,
       "min_new_tokens": -1,
@@ -170,8 +165,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1131,
-        "y": 444
+        "x": 1037,
+        "y": 394.42857142857144
       },
       "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
       "font_size": 32.0,
@@ -204,15 +199,17 @@
       "layout_grid": {
         "x": 8,
         "y": 0,
-        "w": 3,
+        "w": 4,
         "h": 14
       },
       "layout_node": {
-        "x": 1350,
-        "y": 465
+        "x": 1255.4285714285713,
+        "y": 397
       },
       "ROI": false,
       "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "mjpeg_port": 10000,
       "init_kwargs": {
         "video_output": "display://0",
         "video_output_codec": "null",
@@ -227,13 +224,13 @@
       "connections": [],
       "layout_grid": {
         "x": 5,
-        "y": 14,
+        "y": 17,
         "w": 3,
-        "h": 10
+        "h": 16
       },
       "layout_node": {
-        "x": 786,
-        "y": 67
+        "x": 577.1428571428571,
+        "y": 113
       },
       "text_color": "white",
       "partial_color": "dodgerblue",
@@ -257,8 +254,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 30.88888888888889,
-        "y": 312.77777777777777
+        "x": -39.42857142857143,
+        "y": 308.85714285714283
       },
       "init_kwargs": {
         "video_input": "/data/videos/demo/Door_RAG_advan.MOV",

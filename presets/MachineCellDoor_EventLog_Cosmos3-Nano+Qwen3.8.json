@@ -1,0 +1,478 @@
+{
+  "version": "24.7",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 11
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 25,
+        "w": 8,
+        "h": 6
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "PiperTTS",
+      "type": "PiperTTS",
+      "connections": [
+        {
+          "to": "RateLimit",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1435,
+        "y": 138
+      },
+      "voice": "en_US-libritts-high",
+      "speaker": "p339",
+      "rate": 1,
+      "buffering": [
+        "punctuation"
+      ],
+      "init_kwargs": {
+        "voice": "en_US-libritts-high",
+        "voice_rate": 1.0,
+        "voice_speaker": "p339",
+        "sample_rate_hz": 22050,
+        "model_cache": "/data/models/piper",
+        "name": "PiperTTS"
+      }
+    },
+    {
+      "name": "RateLimit",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "WebAudioOut",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1637,
+        "y": 137.66666666666666
+      },
+      "rate": 1.0,
+      "chunk": 4800,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 1.0,
+        "chunk": 4800,
+        "drop_inputs": true,
+        "on_demand": false,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "WebAudioOut",
+      "type": "WebAudioOut",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1839.6666666666667,
+        "y": 144
+      },
+      "init_kwargs": {}
+    },
+    {
+      "name": "RateLimit_1",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "AutoPrompt_ICL",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "NanoDB_Fashion",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 590,
+        "y": 219.66666666666666
+      },
+      "rate": 1.0,
+      "chunk": null,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 1.0,
+        "drop_inputs": true,
+        "on_demand": true,
+        "name": "RateLimit_1"
+      }
+    },
+    {
+      "name": "AutoPrompt_ICL",
+      "type": "AutoPrompt_ICL",
+      "connections": [
+        {
+          "to": "vLLM",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 787,
+        "y": 218.33333333333334
+      },
+      "template": "<reset><text><image>Look at the front door panel of the automated machine enclosure (the glass and aluminum cabinet). Is the door open or closed? Answer with one word: \"open\" or \"closed\".",
+      "seq_replace_mode": true,
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "init_kwargs": {
+        "template": "<reset><text><image>Look at the front door panel of the automated machine enclosure (the glass and aluminum cabinet). Is the door open or closed? Answer with one word: \"open\" or \"closed\".",
+        "name": "AutoPrompt_ICL"
+      }
+    },
+    {
+      "name": "VideoOverlay",
+      "type": "VideoOverlay",
+      "connections": [
+        {
+          "to": "VideoOutput",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1229,
+        "y": 359.6666666666667
+      },
+      "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+      "font_size": 32.0,
+      "prefix_text": null,
+      "color": "#78d715",
+      "background": "#000000",
+      "opacity": 0.4,
+      "x": 5,
+      "y": 5,
+      "line_spacing": 38,
+      "line_length": null,
+      "return_copy": true,
+      "init_kwargs": {
+        "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "font_size": 32.0,
+        "color": "#78d715",
+        "background": "#000000",
+        "opacity": 0.4,
+        "x": 5,
+        "y": 5,
+        "line_spacing": 38,
+        "return_copy": true,
+        "name": "VideoOverlay"
+      }
+    },
+    {
+      "name": "vLLM",
+      "type": "vLLM",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 2
+        },
+        {
+          "to": "Two_Steps_Alert",
+          "input": 0,
+          "output": 2
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 11,
+        "w": 4,
+        "h": 14
+      },
+      "layout_node": {
+        "x": 1000.6666666666666,
+        "y": 193
+      },
+      "max_output_tokens": 60,
+      "system_prompt": "You are a helpful and friendly AI assistant.",
+      "thinking": "auto",
+      "thinking_token_budget": 0,
+      "temperature": null,
+      "top_p": null,
+      "top_k": null,
+      "min_p": null,
+      "presence_penalty": null,
+      "repetition_penalty": null,
+      "strict_tools": false,
+      "video_mode": "mp4",
+      "video_fps": 8,
+      "init_kwargs": {
+        "max_output_tokens": 60,
+        "drop_inputs": true,
+        "system_prompt": "You are a helpful and friendly AI assistant.",
+        "name": "vLLM",
+        "model": "nvidia/Cosmos3-Nano",
+        "gpu_memory_utilization": 0.3,
+        "max_model_len": 8192
+      }
+    },
+    {
+      "name": "Two_Steps_Alert",
+      "type": "Two_Steps_Alert",
+      "connections": [
+        {
+          "to": "PiperTTS",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "EventRecorder",
+          "input": 1,
+          "output": 1
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1230.6666666666667,
+        "y": 136
+      },
+      "first_check": 3,
+      "second_check": 5,
+      "alert_keyword": "open",
+      "normal_keyword": "closed",
+      "warning_message_text": "Warning, the machine door is opened.",
+      "alert": true,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "first_check": 3,
+        "second_check": 5,
+        "alert": true,
+        "alert_keyword": "open",
+        "normal_keyword": "closed",
+        "warning_message_text": "Warning, the machine door is opened.",
+        "drop_inputs": true,
+        "name": "Two_Steps_Alert"
+      }
+    },
+    {
+      "name": "VideoSource",
+      "type": "VideoSource",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "RateLimit_1",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "EventRecorder",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 388,
+        "y": 359
+      },
+      "init_kwargs": {
+        "video_input": "/data/videos/demo/MachineCellDoor_C0080.mp4",
+        "video_input_width": 1280,
+        "video_input_height": 720,
+        "loops": -1,
+        "return_copy": true,
+        "return_tensors": "cuda",
+        "name": "VideoSource"
+      }
+    },
+    {
+      "name": "NanoDB_Fashion",
+      "type": "NanoDB_Fashion",
+      "connections": [
+        {
+          "to": "AutoPrompt_ICL",
+          "input": 0,
+          "output": 1
+        }
+      ],
+      "layout_grid": {
+        "x": 4,
+        "y": 11,
+        "w": 4,
+        "h": 14
+      },
+      "layout_node": {
+        "x": 588,
+        "y": 497
+      },
+      "top_k": 5,
+      "search_time": "machine_door_rag",
+      "rag_sample_size": 1,
+      "rag_threshold": 90.0,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "path": "/data/nanodb/images",
+        "model": "openai/clip-vit-large-patch14-336",
+        "dtype": "float16",
+        "reserve": 1024,
+        "top_k": 5,
+        "crop": true,
+        "drop_inputs": true,
+        "search_time": "machine_door_rag",
+        "name": "NanoDB_Fashion",
+        "rag_sample_size": 1
+      }
+    },
+    {
+      "name": "VideoOutput",
+      "type": "VideoOutput",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 11
+      },
+      "layout_node": {
+        "x": 1432.6666666666667,
+        "y": 362
+      },
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "preview_max_side": 0,
+      "mjpeg_port": 10000,
+      "init_kwargs": {
+        "video_output": "display://0",
+        "video_output_codec": "null",
+        "ROI": false,
+        "ROI_Coordinates": "0,0,1,1",
+        "name": "VideoOutput"
+      }
+    },
+    {
+      "name": "vLLM_Summary",
+      "type": "vLLM",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1840,
+        "y": 600
+      },
+      "max_output_tokens": 400,
+      "system_prompt": "You are a helpful assistant.",
+      "thinking": "auto",
+      "thinking_token_budget": 0,
+      "temperature": null,
+      "top_p": null,
+      "top_k": null,
+      "min_p": null,
+      "presence_penalty": null,
+      "repetition_penalty": null,
+      "strict_tools": false,
+      "video_mode": "mp4",
+      "video_fps": 8,
+      "init_kwargs": {
+        "name": "vLLM_Summary",
+        "model": "nvidia/Qwen3.8-27B-NVFP4",
+        "gpu_memory_utilization": 0.3,
+        "max_model_len": 8192,
+        "extra_engine_args": "{\"limit_mm_per_prompt\": {\"image\": 4, \"video\": 1}}",
+        "max_output_tokens": 400
+      }
+    },
+    {
+      "name": "EventRecorder",
+      "type": "EventRecorder",
+      "connections": [
+        {
+          "to": "EventSummarizer",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1640,
+        "y": 420
+      },
+      "pre_seconds": 5.0,
+      "post_seconds": 3.0,
+      "max_seconds": 60.0,
+      "record_fps": 10.0,
+      "output_dir": "/data/events",
+      "event_type": "機台門打開",
+      "encoder": "h264_nvenc",
+      "init_kwargs": {
+        "name": "EventRecorder",
+        "event_type": "機台門打開"
+      }
+    },
+    {
+      "name": "EventSummarizer",
+      "type": "EventSummarizer",
+      "connections": [
+        {
+          "to": "EventLog",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "vLLM_Summary",
+          "input": 0,
+          "output": 1
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1840,
+        "y": 420
+      },
+      "scene_context": "畫面是工廠裡一台自動化機台，前方是玻璃與鋁框的門。",
+      "num_frames": 16,
+      "max_output_tokens": 400,
+      "prompt": "這段影片是一個事件的錄影片段，事件是：{event_type}。片段長約 {duration} 秒{truncated_note}。{scene_context}\n請只描述畫面上看得到的事，不確定就說不確定，不要推測原因，也不要加入畫面上沒有的人或燈號。使用台灣繁體中文，照下面格式回答（過程寫 3 到 6 點，只寫有變化的時間點）：\n摘要：一句話，30 字以內\n過程：\n- 約第 N 秒 發生什麼\n結果：事件結束時的狀態",
+      "timeout_seconds": 120.0,
+      "max_queue": 3,
+      "init_kwargs": {
+        "name": "EventSummarizer",
+        "scene_context": "畫面是工廠裡一台自動化機台，前方是玻璃與鋁框的門。"
+      }
+    },
+    {
+      "name": "EventLog",
+      "type": "EventLog",
+      "connections": [],
+      "layout_grid": {
+        "x": 0,
+        "y": 11,
+        "w": 4,
+        "h": 14
+      },
+      "layout_node": {
+        "x": 2040,
+        "y": 420
+      },
+      "output_dir": "/data/events",
+      "keep": 50,
+      "init_kwargs": {
+        "name": "EventLog"
+      }
+    }
+  ]
+}

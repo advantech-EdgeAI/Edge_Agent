@@ -6,39 +6,19 @@
         "x": 0,
         "y": 0,
         "w": 8,
-        "h": 14
+        "h": 11
       }
     },
     "TerminalPlugin": {
       "layout_grid": {
         "x": 0,
-        "y": 14,
-        "w": 8,
-        "h": 6
+        "y": 11,
+        "w": 4,
+        "h": 10
       }
     },
     "TextStream": {
-      "layout_grid": {
-        "x": 8,
-        "y": 14,
-        "w": 4,
-        "h": 6
-      }
-    },
-    "NanoLLM_ICL": {
       "layout_grid": {}
-    },
-    "NanoDB_Fashion": {
-      "layout_grid": {}
-    },
-    "VideoOutput": {
-      "layout_grid": {}
-    },
-    "AutoPrompt_ICL_1": {
-      "layout_node": {
-        "x": 1227,
-        "y": 539
-      }
     }
   },
   "plugins": [
@@ -54,8 +34,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1168,
-        "y": 106
+        "x": 1435.5,
+        "y": 211
       },
       "voice": "en_US-libritts-high",
       "speaker": "p339",
@@ -84,8 +64,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1383,
-        "y": 101
+        "x": 1626.75,
+        "y": 215.5
       },
       "rate": 1.0,
       "chunk": 4800,
@@ -104,8 +84,8 @@
       "connections": [],
       "layout_grid": {},
       "layout_node": {
-        "x": 1590,
-        "y": 114
+        "x": 1827.5,
+        "y": 219
       },
       "init_kwargs": {}
     },
@@ -121,8 +101,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 605,
-        "y": 317
+        "x": 566.75,
+        "y": 250
       },
       "rate": 1.0,
       "chunk": null,
@@ -131,7 +111,7 @@
         "rate": 1.0,
         "drop_inputs": true,
         "on_demand": true,
-        "name": "RateLimit"
+        "name": "RateLimit_1"
       }
     },
     {
@@ -146,8 +126,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 901,
-        "y": 326
+        "x": 761,
+        "y": 260.5
       },
       "template": "<reset><image>Check the current status of the door. Is it open or closed?",
       "seq_replace_mode": true,
@@ -170,8 +150,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 896,
-        "y": 526
+        "x": 579.75,
+        "y": 511
       },
       "rate": 1.0,
       "chunk": null,
@@ -180,7 +160,7 @@
         "rate": 1.0,
         "drop_inputs": true,
         "on_demand": true,
-        "name": "RateLimit"
+        "name": "RateLimit_2"
       }
     },
     {
@@ -195,8 +175,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1382.3333333333333,
-        "y": 433
+        "x": 1216.5,
+        "y": 385
       },
       "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
       "font_size": 32.0,
@@ -240,22 +220,17 @@
           "to": "AutoPrompt_ICL_1",
           "input": 0,
           "output": 2
-        },
-        {
-          "to": "WebClient",
-          "input": 0,
-          "output": 4
         }
       ],
       "layout_grid": {
-        "x": 8,
-        "y": 0,
+        "x": 4,
+        "y": 11,
         "w": 4,
-        "h": 14
+        "h": 10
       },
       "layout_node": {
-        "x": 1130,
-        "y": 244
+        "x": 958.25,
+        "y": 206
       },
       "max_new_tokens": 10,
       "min_new_tokens": -1,
@@ -288,8 +263,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 955,
-        "y": 110
+        "x": 1212,
+        "y": 201.25
       },
       "first_check": 3,
       "second_check": 5,
@@ -315,19 +290,20 @@
       "connections": [],
       "layout_grid": {},
       "layout_node": {
-        "x": 1514,
-        "y": 555
+        "x": 1438.25,
+        "y": 511
       },
       "check_time": 1,
       "save_frames": 3,
       "save_pics_folder": "/data/nanodb/images",
       "alert_keyword": "open",
+      "max_images_per_day": 500,
       "alert": true,
       "drop_inputs": true,
       "init_kwargs": {
         "check_time": 1,
         "save_frames": 3,
-        "save_pics_folder": "/data/nanodb/test/imgs/",
+        "save_pics_folder": "/data/nanodb/images",
         "alert": true,
         "alert_keyword": "open",
         "drop_inputs": true,
@@ -352,12 +328,17 @@
           "to": "RateLimit_2",
           "input": 0,
           "output": 0
+        },
+        {
+          "to": "NanoDB_Fashion",
+          "input": 0,
+          "output": 0
         }
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 417.3333333333333,
-        "y": 418
+        "x": 362.5,
+        "y": 407
       },
       "init_kwargs": {
         "video_input": "/data/videos/demo/Door_advan.mkv",
@@ -372,22 +353,16 @@
     {
       "name": "NanoDB_Fashion",
       "type": "NanoDB_Fashion",
-      "connections": [
-        {
-          "to": "WebClient",
-          "input": 0,
-          "output": 0
-        }
-      ],
+      "connections": [],
       "layout_grid": {
         "x": 8,
-        "y": 14,
+        "y": 11,
         "w": 4,
-        "h": 10
+        "h": 16
       },
       "layout_node": {
-        "x": 1532,
-        "y": 256.3333333333333
+        "x": 1747.75,
+        "y": 429
       },
       "top_k": 5,
       "search_time": "door_alert",
@@ -418,8 +393,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1230,
-        "y": 541
+        "x": 1206.75,
+        "y": 525
       },
       "template": "<text><image>",
       "seq_replace_mode": false,
@@ -430,20 +405,27 @@
         "seq_replace_mode": false,
         "ROI": false,
         "ROI_Coordinates": "0,0,1,1",
-        "name": "AutoPrompt_ICL"
+        "name": "AutoPrompt_ICL_1"
       }
     },
     {
       "name": "VideoOutput",
       "type": "VideoOutput",
       "connections": [],
-      "layout_grid": {},
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 11
+      },
       "layout_node": {
-        "x": 1627,
-        "y": 450
+        "x": 1435,
+        "y": 386.75
       },
       "ROI": false,
       "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "mjpeg_port": 10000,
       "init_kwargs": {
         "video_output": "display://0",
         "video_output_codec": "null",

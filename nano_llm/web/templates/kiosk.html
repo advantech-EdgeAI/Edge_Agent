@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edge AI Agent</title>
+  <link rel="icon" href="/static/2011-Logo-with-Slogan.jpg">
+  <link rel="stylesheet" href="/static/bootstrap.css">
+  <link rel="stylesheet" href="/static/chat.css">
+  <link rel="stylesheet" href="/static/sensor_view.css">
+  <link rel="stylesheet" href="/static/drawflow.min.css">
+  <link rel="stylesheet" href="/static/kiosk.css">
+</head>
+<!-- The booth's two screens (docs/superpowers/specs/2026-10-20-kiosk-display-design.md):
+     /kiosk?screen=camera and /kiosk?screen=brain. Read-only, nothing loaded from the network.
+     /kiosk?screen=single: one screen with one camera (docs/superpowers/specs/2026-11-04-orin-single-screen-kiosk-design.md).
+     /kiosk?screen=auto: any preset, cards chosen by node type (docs/superpowers/specs/2026-11-06-generic-kiosk-display-design.md). -->
+<body class="kiosk">
+  <div id="kiosk-stage"></div>
+  <script>
+    var kioskScreenParam = new URLSearchParams(window.location.search).get('screen');
+    var kioskScreen = ['brain', 'single', 'auto'].includes(kioskScreenParam) ? kioskScreenParam : 'camera';
+    var viewMode = 'kiosk-' + kioskScreen;   // websocket.js forwards it as ?view= (server-side filtering)
+  </script>
+  <script src="/static/jquery-3.6.3.min.js"></script>
+  <script src="/static/websocket.js"></script>
+  <script src="/static/markdown.js"></script>
+  <script src="/static/output_bus.js"></script>
+  <script src="/static/chat_view.js"></script>
+  <script src="/static/sensor_view.js"></script>
+  <script src="/static/track_boxes.js"></script>
+  <script src="/static/perf_monitor.js"></script>
+  <script src="/static/drawflow.min.js"></script>
+  <script src="/static/kiosk_logic.js"></script>
+  <script src="/static/kiosk.js"></script>
+  <script src="/static/event_log.js"></script>
+  <script src="/static/kiosk_auto.js"></script>
+</body>
+</html>

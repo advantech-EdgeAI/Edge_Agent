@@ -1,0 +1,24 @@
+{
+ "auto": {
+  "positions": {
+   "DatasetLoader": {
+    "x": 594,
+    "y": 248
+   },
+   "AutoLabeler": {
+    "x": 805,
+    "y": 246
+   },
+   "DatasetCollector": {
+    "x": 1037,
+    "y": 333
+   },
+   "VideoOutput": {
+    "x": 1037,
+    "y": 195
+   }
+  },
+  "hidden": [],
+  "routes": {}
+ }
+}

@@ -179,3 +179,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Edge Agent runtime folders (created by start.sh)
+data/
+logs/
+certs/

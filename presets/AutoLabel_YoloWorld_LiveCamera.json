@@ -1,0 +1,126 @@
+{
+  "version": "24.7",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 11
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 11,
+        "w": 8,
+        "h": 6
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "VideoSource",
+      "type": "VideoSource",
+      "connections": [
+        {
+          "to": "AutoLabeler",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 323,
+        "y": 186
+      },
+      "init_kwargs": {
+        "video_input": "/dev/video0",
+        "return_copy": true,
+        "return_tensors": "cuda",
+        "name": "VideoSource"
+      }
+    },
+    {
+      "name": "AutoLabeler",
+      "type": "AutoLabeler",
+      "connections": [
+        {
+          "to": "VideoOutput",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "DatasetCollector",
+          "input": 0,
+          "output": 1
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 561,
+        "y": 174
+      },
+      "class_names": "mouse",
+      "conf_threshold": 0.1,
+      "iou_threshold": 0.5,
+      "return_copy": true,
+      "init_kwargs": {
+        "model": "YoloWorld/yolov8x-worldv2",
+        "class_names": "mouse",
+        "conf_threshold": 0.1,
+        "iou_threshold": 0.5,
+        "drop_inputs": true,
+        "name": "AutoLabeler"
+      }
+    },
+    {
+      "name": "DatasetCollector",
+      "type": "DatasetCollector",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 11,
+        "w": 3,
+        "h": 3
+      },
+      "layout_node": {
+        "x": 848,
+        "y": 273
+      },
+      "export_format": "coco",
+      "min_confidence": 0.5,
+      "include_negatives": false,
+      "init_kwargs": {
+        "export_format": "coco",
+        "min_confidence": 0.5,
+        "name": "DatasetCollector"
+      }
+    },
+    {
+      "name": "VideoOutput",
+      "type": "VideoOutput",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 11
+      },
+      "layout_node": {
+        "x": 859,
+        "y": 133
+      },
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "mjpeg_port": 10000,
+      "init_kwargs": {
+        "video_output": "display://",
+        "ROI": false,
+        "ROI_Coordinates": "0,0,1,1",
+        "name": "VideoOutput"
+      }
+    }
+  ]
+}

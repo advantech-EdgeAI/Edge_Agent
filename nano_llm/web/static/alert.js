@@ -21,6 +21,13 @@ function removeAlert(id) {
 }
 
 function addAlert(alert) {
+  // Dual-screen exhibition display (2026-09-19): the camera-only kiosk screen is a
+  // passive display for booth visitors - operator-facing alerts (tool errors, preset
+  // load status) don't belong there. See docs/superpowers/specs/2026-09-19-dual-
+  // screen-exhibition-display-design.md.
+  if( typeof viewMode !== 'undefined' && viewMode === 'sensor' )
+    return;
+
   // supress other messages from the same category that may still be showing
   if( alert['category'].length > 0 )
     $(`#alert_messages .alert-category-${alert['category']}`).remove();

@@ -40,8 +40,50 @@ function getWebsocketProtocol() {
 
 function connectWebsocket(msgCallback, port=49000) {
 	websocketCallback = msgCallback;
-	websocket = new WebSocket(`${getWebsocketProtocol()}${window.location.hostname}:${port}`);
+	// Dual-screen exhibition display (2026-09-21): the page's own ?view= query
+	// string doesn't travel with a `new WebSocket(...)` call automatically -
+	// forward it explicitly so the server can skip sending video frame bytes to
+	// a ?view=pipeline connection, which never renders them anyway (grid.js's
+	// view filter never creates a video widget there). Confirmed live: without
+	// this, a ?view=camera + ?view=pipeline pair transmitted the full camera
+	// stream TWICE, which was the dominant remaining source of lag even after
+	// fixing the server's per-client broadcast fan-out.
+	const viewParam = (typeof viewMode !== 'undefined' && viewMode) ? `?view=${viewMode}` : '';
+	websocket = new WebSocket(`${getWebsocketProtocol()}${window.location.hostname}:${port}${viewParam}`);
 	websocket.addEventListener('message', websocketListener);
+	websocket.addEventListener('close', onWebsocketClose);
+}
+
+// The VideoOutputs this page shows (2026-11-08): the server then sends only their frames
+// (server.py _set_video_only); a page that never calls this gets every output, as before. Sent 200 ms
+// after the last change (a preset's widgets arrive one by one) and only when the list changed.
+var videoSubscriptionSent = null, videoSubscriptionTimer = null;
+function setVideoSubscription(names) {
+  clearTimeout(videoSubscriptionTimer);
+  videoSubscriptionTimer = setTimeout(function() {
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) { setVideoSubscription(names); return; }
+    const only = [...new Set(names)].sort(), key = JSON.stringify(only);
+    if (key === videoSubscriptionSent) return;
+    videoSubscriptionSent = key;
+    sendWebsocket({'__video__': {'only': only}});
+  }, 200);
+}
+
+function onWebsocketClose() {
+  // The connection can drop for reasons the page never initiated itself - not just
+  // the user clicking Load (loadPreset(), in studio.js, already shows this overlay
+  // and starts polling *before* the close happens) but also a server-initiated
+  // restart, like the automatic stuck/failed-load recovery in vllm.py (see the
+  // _WATCHDOG_* comment there and known_issues/jetson-thor-memory-not-reclaimed.md).
+  // Without this handler the page was silently left frozen on whatever was last
+  // rendered until someone noticed and refreshed by hand - showReloadMessage()/
+  // pollForReload() (defined in studio.html) are the same recovery flow the
+  // user-initiated path already uses; the overlay check just avoids double-starting
+  // it when that path is the one that's already running.
+  if( document.getElementById('reloadOverlay') )
+    return;
+  showReloadMessage();
+  pollForReload();
 }
 
 function sendWebsocket(payload, type=MESSAGE_JSON, metadata='') {

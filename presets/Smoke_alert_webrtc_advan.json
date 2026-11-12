@@ -6,25 +6,16 @@
         "x": 0,
         "y": 0,
         "w": 8,
-        "h": 14
+        "h": 11
       }
     },
     "TerminalPlugin": {
       "layout_grid": {
         "x": 0,
-        "y": 14,
+        "y": 11,
         "w": 8,
         "h": 6
       }
-    },
-    "NanoLLM_ICL": {
-      "layout_grid": {}
-    },
-    "VideoOutput": {
-      "layout_grid": {}
-    },
-    "TextStream": {
-      "layout_grid": {}
     }
   },
   "plugins": [
@@ -46,11 +37,6 @@
           "to": "One_Step_Alert",
           "input": 0,
           "output": 2
-        },
-        {
-          "to": "WebClient",
-          "input": 0,
-          "output": 4
         }
       ],
       "layout_grid": {
@@ -60,8 +46,8 @@
         "h": 14
       },
       "layout_node": {
-        "x": 1245,
-        "y": 43
+        "x": 1099.142857142857,
+        "y": 17
       },
       "max_new_tokens": 10,
       "min_new_tokens": -1,
@@ -94,8 +80,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 805.5,
-        "y": 30.75
+        "x": 696.8571428571429,
+        "y": 65
       },
       "rate": 15.0,
       "chunk": null,
@@ -119,8 +105,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1415.25,
-        "y": 305
+        "x": 1332.4285714285713,
+        "y": 220
       },
       "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
       "font_size": 32.0,
@@ -158,15 +144,15 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1021,
-        "y": 47.5
+        "x": 895,
+        "y": 69.57142857142857
       },
       "template": "<reset><image><image><image>Does the image show any smoke ?Return \"Yes\" if you see any, or \"No\" if there is no visible smoke.",
       "seq_replace_mode": true,
       "ROI": false,
       "ROI_Coordinates": "0,0,1,1",
       "init_kwargs": {
-        "template": "<reset><image>Does the image show any smoke ?Return \"Yes\" if you see any, or \"No\" if there is no visible smoke.",
+        "template": "<reset><image><image><image>Does the image show any smoke ?Return \"Yes\" if you see any, or \"No\" if there is no visible smoke.",
         "seq_replace_mode": true,
         "name": "AutoPrompt_ICL"
       }
@@ -176,14 +162,14 @@
       "type": "TextStream",
       "connections": [],
       "layout_grid": {
-        "x": 8,
-        "y": 25,
+        "x": 4,
+        "y": 17,
         "w": 4,
-        "h": 6
+        "h": 8
       },
       "layout_node": {
-        "x": 1513.5234375,
-        "y": 118.09375
+        "x": 1416.857142857143,
+        "y": 84
       },
       "text_color": "white",
       "partial_color": "dodgerblue",
@@ -202,8 +188,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1283,
-        "y": -104
+        "x": 1517,
+        "y": -76.42857142857143
       },
       "voice": "en_US-libritts-high",
       "speaker": "p339",
@@ -232,8 +218,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1498,
-        "y": -108
+        "x": 1711,
+        "y": -74.57142857142857
       },
       "rate": 1.0,
       "chunk": 4800,
@@ -243,7 +229,7 @@
         "chunk": 4800,
         "drop_inputs": true,
         "on_demand": false,
-        "name": "RateLimit"
+        "name": "RateLimit_1"
       }
     },
     {
@@ -252,8 +238,8 @@
       "connections": [],
       "layout_grid": {},
       "layout_node": {
-        "x": 1742,
-        "y": -88
+        "x": 1896.5714285714287,
+        "y": -62.857142857142854
       },
       "init_kwargs": {}
     },
@@ -269,8 +255,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1043.909090909091,
-        "y": -119.9090909090909
+        "x": 1321.5714285714287,
+        "y": -84
       },
       "check_time": 5,
       "alert_keyword": "yes",
@@ -305,8 +291,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 497,
-        "y": 98
+        "x": 473.5,
+        "y": 130
       },
       "init_kwargs": {
         "video_input": "/data/videos/demo/Smoke_advan.mp4",
@@ -329,11 +315,13 @@
         "h": 11
       },
       "layout_node": {
-        "x": 1684.75,
-        "y": 319
+        "x": 1526.5714285714287,
+        "y": 222
       },
       "ROI": false,
       "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "mjpeg_port": 10000,
       "init_kwargs": {
         "video_output": "webrtc://@:8554/output",
         "ROI": false,

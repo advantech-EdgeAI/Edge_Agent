@@ -3,12 +3,9 @@ import subprocess
 import sys
 import time
 import os
-from datetime import datetime, timedelta
+import threading
+from datetime import datetime, timedelta, timezone
 
-# Must match DynamicAgent._AUTOLOAD_FILE in nano_llm/agents/dynamic_agent.py.
-# Written by the child right before a "restart and load preset" exit; read here
-# so the next child comes up with that preset already loaded.
-_AUTOLOAD_FILE = '/opt/NanoLLM/.autoload_preset'
 
 # Add the project root directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -36,7 +33,7 @@ def write_to_log(log_file, message):
     :param message: Log message to write.
     """
     with open(log_file, "a", encoding="utf-8") as log:
-        timestamp = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = (datetime.now(timezone.utc) + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
         log.write(f"[{timestamp}] {message}\n")
 
 def run_studio(args):
@@ -68,6 +65,13 @@ def start_child_process(args):
                 args_list.append(value)
             elif key == "ws_port":
                 args_list.extend(["--ws-port", str(value)])
+            elif key == "web_port":
+                # Pre-existing bug: without this, the child process always falls back to
+                # argparse's web_port default (8050) regardless of what was passed to the
+                # supervisor - only surfaced when running two studio instances on one host
+                # (e.g. --network host containers on non-default ports), which this project
+                # hadn't needed before. ws_port already had this forwarding; web_port didn't.
+                args_list.extend(["--web-port", str(value)])
     env = os.environ.copy()
     # Prevent MESA/DRI from trying to open a display in headless Docker environment.
     # libdrm_amdgpu.so.1 on Jetson has an undefined symbol (drmCloseBufferHandle)
@@ -81,7 +85,6 @@ def start_child_process(args):
                           env=env)
 
 def main(log_file, **args):
-    global child_process
     # args is a dictionary
     if "--no-child" in sys.argv:
         try:
@@ -95,69 +98,36 @@ def main(log_file, **args):
     print("Run with subprocess")
     write_to_log(log_file, "Program started with subprocess.")
 
-    while True: #(Normal run)
-        child_process = start_child_process(args)
+    from nano_llm.recovery import Supervisor, probe_health, sigterm_as_interrupt
+
+    def log(message):
+        print(message)
+        write_to_log(log_file, message)
+
+    # One watchdog for every way the child can get stuck or die (docs/superpowers/specs/
+    # 2026-10-15-studio-self-recovery-design.md): no web answer, no exit after a restart
+    # request, a plugin's report, a crash. It restarts with the last loaded preset.
+    supervisor = Supervisor(start_child=lambda preset: start_child_process({**args, "load": preset}),
+                            probe=lambda: probe_health(args.get("web_port") or 8050), log=log)
+    def clean_old_files():   # once per container start (nano_llm/retention.py, 2026-11-08)
         try:
-            # Wait for the subprocess to finish
-            child_process.wait()
-        except KeyboardInterrupt:
-            shutdown_message = "Received termination signal, shutting down the program..."
-            print(shutdown_message)
-            write_to_log(log_file, shutdown_message)
-            child_process.terminate()
-            try:
-                child_process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                child_process.kill()
-            break
+            from nano_llm import retention
+            removed = retention.clean()
+            if any(removed.values()):
+                log(f"retention: deleted old files {removed} (periods: EDGE_AGENT_KEEP_*_DAYS)")
+        except Exception as e:
+            log(f"retention: skipped ({e})")
+    threading.Thread(target=clean_old_files, daemon=True, name="retention").start()
 
-        if child_process.returncode == 42 or child_process.returncode == 43 or child_process.returncode == 44:
-            crash_message = (
-                f"The subprocess exited abnormally (exit code: {child_process.returncode}). "
-            )
-            print(crash_message)
-            write_to_log(log_file, crash_message)
-            child_process.terminate()
-            try:
-                child_process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                child_process.kill()
-            break
+    sigterm_as_interrupt()
+    supervisor.run(args.get("load"))
 
-        if child_process.returncode != 0:  # (Crash)
-            crash_message = (
-                f"The subprocess exited abnormally (exit code: {child_process.returncode}). "
-                "Restarting after 3 seconds..."
-            )
-            print(crash_message)
-            write_to_log(log_file, crash_message)
-            # Do NOT auto-load LastPipeline.json after a crash:
-            # if the pipeline caused the crash (e.g. TLS exhaustion), auto-loading
-            # creates an infinite crash loop. Start clean; user can reload from presets.
-            _ = args.pop("load", None)
-            # Discard any pending autoload request too, in case the crash happened
-            # mid-restart — we don't want a stale request surviving to a later exit.
-            try:
-                os.remove(_AUTOLOAD_FILE)
-            except FileNotFoundError:
-                pass
-            time.sleep(3)
-        else: #("/reload", "New project", or "Load preset" for clearing memory)
-            # If the child wrote an autoload request (Agent -> Load), start the next
-            # child with that preset; otherwise start clean (New -> Discard / plain reload).
-            try:
-                with open(_AUTOLOAD_FILE) as f:
-                    args["load"] = f.read().strip()
-                os.remove(_AUTOLOAD_FILE)
-            except FileNotFoundError:
-                _ = args.pop("load", None)
-            write_to_log(log_file, "Subprocess exited normally.")
 
 if __name__ == "__main__":
     LOG_FILE = None
     if "--no-child" not in sys.argv:
         # Get the current time and format it for the log file name
-        current_time = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
+        current_time = (datetime.now(timezone.utc) + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
 
         # Define a log file path with the timestamp
         LOG_DIR = "/opt/NanoLLM/logs"  # Target directory for logs

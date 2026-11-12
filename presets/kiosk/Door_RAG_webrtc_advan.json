@@ -1,0 +1,39 @@
+{
+ "auto": {
+  "positions": {
+   "VideoOverlay": {
+    "x": 1117,
+    "y": 337
+   },
+   "VideoOutput": {
+    "x": 1304,
+    "y": 337
+   },
+   "VideoSource": {
+    "x": 45,
+    "y": 319
+   },
+   "TextStream": {
+    "x": 696,
+    "y": 118
+   },
+   "RateLimit": {
+    "x": 241,
+    "y": 230
+   },
+   "AutoPrompt_ICL": {
+    "x": 689,
+    "y": 242
+   },
+   "NanoDB_Fashion": {
+    "x": 442,
+    "y": 132
+   },
+   "NanoLLM_ICL": {
+    "x": 909,
+    "y": 192
+   }
+  },
+  "hidden": []
+ }
+}

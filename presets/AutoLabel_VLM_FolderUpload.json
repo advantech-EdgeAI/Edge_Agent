@@ -1,0 +1,196 @@
+{
+ "version": "24.7",
+ "globals": {
+  "GraphEditor": {
+   "layout_grid": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 11
+   }
+  },
+  "TerminalPlugin": {
+   "layout_grid": {
+    "x": 0,
+    "y": 11,
+    "w": 8,
+    "h": 6
+   }
+  }
+ },
+ "plugins": [
+  {
+   "name": "DatasetLoader",
+   "type": "DatasetLoader",
+   "connections": [
+    {
+     "to": "PromptBuilder",
+     "input": 0,
+     "output": 0
+    }
+   ],
+   "layout_grid": {
+    "x": 3,
+    "y": 17,
+    "w": 3,
+    "h": 3
+   },
+   "layout_node": {
+    "x": 334.75,
+    "y": 195
+   },
+   "init_kwargs": {
+    "wait_for_release": true,
+    "name": "DatasetLoader"
+   }
+  },
+  {
+   "name": "PromptBuilder",
+   "type": "PromptBuilder",
+   "connections": [
+    {
+     "to": "AutoPrompt_ICL",
+     "input": 0,
+     "output": 0
+    }
+   ],
+   "layout_grid": {},
+   "layout_node": {
+    "x": 537,
+    "y": 200
+   },
+   "class_names": "robotic arm",
+   "init_kwargs": {
+    "class_names": "robotic arm",
+    "name": "PromptBuilder"
+   }
+  },
+  {
+   "name": "AutoPrompt_ICL",
+   "type": "AutoPrompt_ICL",
+   "connections": [
+    {
+     "to": "vLLM",
+     "input": 0,
+     "output": 0
+    }
+   ],
+   "layout_grid": {},
+   "layout_node": {
+    "x": 732,
+    "y": 195.75
+   },
+   "template": "<reset><image>Locate every robotic arm in the image. For each object found, output one line in the exact format <box label=\"CATEGORY\" conf=\"SCORE\">(x1,y1),(x2,y2)</box> where CATEGORY is exactly one of the requested categories, SCORE is your confidence from 0 to 1, and x1,y1 is the top-left corner and x2,y2 is the bottom-right corner of its bounding box, with coordinates normalized to a 0-1000 scale. If none of the requested categories appear anywhere in the image, output exactly one line: No objects found. Output only the <box> lines (or that one line if there are none), and nothing else.",
+   "seq_replace_mode": true,
+   "ROI": false,
+   "ROI_Coordinates": "0,0,1,1",
+   "init_kwargs": {
+    "name": "AutoPrompt_ICL"
+   }
+  },
+  {
+   "name": "vLLM",
+   "type": "vLLM",
+   "connections": [
+    {
+     "to": "VLMLabelParser",
+     "input": 0,
+     "output": 2
+    }
+   ],
+   "layout_grid": {
+    "x": 8,
+    "y": 11,
+    "w": 4,
+    "h": 14
+   },
+   "layout_node": {
+    "x": 940.25,
+    "y": 161
+   },
+   "max_output_tokens": 300,
+   "system_prompt": "You are a helpful assistant.",
+   "init_kwargs": {
+    "max_output_tokens": 300,
+    "drop_inputs": true,
+    "system_prompt": "You are a helpful assistant.",
+    "name": "vLLM",
+    "model": "Qwen/Qwen3-VL-8B-Instruct-FP8",
+    "gpu_memory_utilization": 0.3,
+    "max_model_len": 8192
+   }
+  },
+  {
+   "name": "VLMLabelParser",
+   "type": "VLMLabelParser",
+   "connections": [
+    {
+     "to": "VideoOutput",
+     "input": 0,
+     "output": 0
+    },
+    {
+     "to": "DatasetCollector",
+     "input": 0,
+     "output": 1
+    }
+   ],
+   "layout_grid": {},
+   "layout_node": {
+    "x": 1143.5,
+    "y": 210.75
+   },
+   "init_kwargs": {
+    "name": "VLMLabelParser"
+   }
+  },
+  {
+   "name": "DatasetCollector",
+   "type": "DatasetCollector",
+   "connections": [],
+   "layout_grid": {
+    "x": 0,
+    "y": 17,
+    "w": 3,
+    "h": 3
+   },
+   "layout_node": {
+    "x": 1356.75,
+    "y": 323
+   },
+   "export_format": "coco",
+   "min_confidence": 0.5,
+   "include_negatives": false,
+   "init_kwargs": {
+    "export_format": "coco",
+    "min_confidence": 0.5,
+    "name": "DatasetCollector"
+   }
+  },
+  {
+   "name": "VideoOutput",
+   "type": "VideoOutput",
+   "connections": [],
+   "layout_grid": {
+    "x": 8,
+    "y": 0,
+    "w": 4,
+    "h": 11
+   },
+   "layout_node": {
+    "x": 1349,
+    "y": 124
+   },
+   "ROI": false,
+   "ROI_Coordinates": "0,0,1,1",
+   "ROI_color": "#ff0000",
+   "mjpeg_port": 10000,
+   "init_kwargs": {
+    "video_output": "display://",
+    "ROI": false,
+    "ROI_Coordinates": "0,0,1,1",
+    "name": "VideoOutput"
+   }
+  }
+ ]
+}

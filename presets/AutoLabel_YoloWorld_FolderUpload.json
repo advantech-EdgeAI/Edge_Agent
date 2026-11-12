@@ -1,0 +1,123 @@
+{
+  "version": "24.7",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 11
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 11,
+        "w": 8,
+        "h": 6
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "DatasetLoader",
+      "type": "DatasetLoader",
+      "connections": [
+        {
+          "to": "AutoLabeler",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 11,
+        "w": 3,
+        "h": 3
+      },
+      "layout_node": {
+        "x": 594,
+        "y": 248
+      },
+      "init_kwargs": {
+        "name": "DatasetLoader"
+      }
+    },
+    {
+      "name": "AutoLabeler",
+      "type": "AutoLabeler",
+      "connections": [
+        {
+          "to": "VideoOutput",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "DatasetCollector",
+          "input": 0,
+          "output": 1
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 810,
+        "y": 239
+      },
+      "class_names": "cup, bottle, person",
+      "conf_threshold": 0.1,
+      "iou_threshold": 0.5,
+      "return_copy": true,
+      "init_kwargs": {
+        "model": "YoloWorld/yolov8x-worldv2",
+        "class_names": "cup, bottle, person",
+        "conf_threshold": 0.1,
+        "iou_threshold": 0.5,
+        "drop_inputs": false,
+        "name": "AutoLabeler"
+      }
+    },
+    {
+      "name": "DatasetCollector",
+      "type": "DatasetCollector",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 1037,
+        "y": 333
+      },
+      "export_format": "coco",
+      "min_confidence": 0.5,
+      "include_negatives": false,
+      "init_kwargs": {
+        "export_format": "coco",
+        "min_confidence": 0.5,
+        "name": "DatasetCollector"
+      }
+    },
+    {
+      "name": "VideoOutput",
+      "type": "VideoOutput",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 11
+      },
+      "layout_node": {
+        "x": 1037,
+        "y": 195
+      },
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "mjpeg_port": 10000,
+      "init_kwargs": {
+        "video_output": "display://",
+        "ROI": false,
+        "ROI_Coordinates": "0,0,1,1",
+        "name": "VideoOutput"
+      }
+    }
+  ]
+}

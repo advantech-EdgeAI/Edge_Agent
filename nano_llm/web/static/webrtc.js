@@ -217,8 +217,13 @@ function onServerMessage(event) {
     connections[url].webrtcPeer.onconnectionstatechange = (ev) => {
       console.log('WebRTC connection state (%s) ' + connections[url].webrtcPeer.connectionState, url);
       
-      if( connections[url].webrtcPeer.connectionState == 'connected' )
-        setInterval(getConnectionStats, 1000, url, connections[url].type == 'inbound' ? 'inbound-rtp' : 'outbound-rtp');
+      if( connections[url].webrtcPeer.connectionState == 'connected' ) {
+        // Each ICE reconnect re-fires 'connected' on the same peer connection;
+        // clear the previous interval first so they don't stack up over time.
+        if( connections[url].statsInterval )
+          clearInterval(connections[url].statsInterval);
+        connections[url].statsInterval = setInterval(getConnectionStats, 1000, url, connections[url].type == 'inbound' ? 'inbound-rtp' : 'outbound-rtp');
+      }
     }
 
     if( connections[url].type == 'inbound' ) {

@@ -1,0 +1,137 @@
+{
+  "version": "24.7",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 11
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 11,
+        "w": 8,
+        "h": 6
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "UserPrompt",
+      "type": "UserPrompt",
+      "connections": [
+        {
+          "to": "AgentLoop",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 2
+      },
+      "layout_node": {
+        "x": 86,
+        "y": 0
+      },
+      "init_kwargs": {
+        "name": "UserPrompt"
+      }
+    },
+    {
+      "name": "AgentLoop",
+      "type": "AgentLoop",
+      "connections": [
+        {
+          "to": "Tools_Hub",
+          "input": 0,
+          "output": 4
+        },
+        {
+          "to": "Skills_Hub",
+          "input": 0,
+          "output": 4
+        },
+        {
+          "to": "SafetyReview",
+          "input": 0,
+          "output": 4
+        },
+        {
+          "to": "vLLM",
+          "input": 0,
+          "output": 5
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 2,
+        "w": 4,
+        "h": 13
+      },
+      "layout_node": {
+        "x": 304,
+        "y": -18
+      },
+      "init_kwargs": {
+        "max_output_tokens": 1024,
+        "name": "AgentLoop",
+        "thinking": "off"
+      },
+      "thinking": "off"
+    },
+    {
+      "name": "Tools_Hub",
+      "type": "Tools_Hub",
+      "connections": [],
+      "init_kwargs": {
+        "enabled_tools": {
+          "list_camera_sources": false,
+          "read_camera_frame": false,
+          "start_tracking": false,
+          "stop_tracking": false,
+          "get_tracked_objects": false,
+          "track_object_in_frame": false
+        },
+        "name": "Tools_Hub"
+      }
+    },
+    {
+      "name": "Skills_Hub",
+      "type": "Skills_Hub",
+      "connections": [],
+      "init_kwargs": {
+        "name": "Skills_Hub",
+        "enabled_skills": {
+          "distance_by_tracking": false
+        }
+      }
+    },
+    {
+      "name": "SafetyReview",
+      "type": "SafetyReview",
+      "connections": [],
+      "init_kwargs": {
+        "confirm_timeout_seconds": 60,
+        "name": "SafetyReview"
+      }
+    },
+    {
+      "name": "vLLM",
+      "type": "vLLM",
+      "connections": [],
+      "init_kwargs": {
+        "model": "nvidia/Qwen3.8-27B-NVFP4",
+        "max_model_len": 16384,
+        "name": "vLLM",
+        "mtp_speculative_tokens": 1
+      },
+      "mtp_speculative_tokens": 1
+    }
+  ]
+}

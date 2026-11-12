@@ -1,0 +1,217 @@
+{
+  "version": "24.7",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 11
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 11,
+        "w": 8,
+        "h": 6
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "vLLM",
+      "type": "vLLM",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 1
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 11,
+        "w": 4,
+        "h": 6
+      },
+      "layout_node": {
+        "x": 684.75,
+        "y": 170.5
+      },
+      "max_output_tokens": 96,
+      "system_prompt": "You are a helpful assistant.",
+      "thinking": "auto",
+      "thinking_token_budget": 0,
+      "temperature": null,
+      "top_p": null,
+      "top_k": null,
+      "min_p": null,
+      "presence_penalty": null,
+      "repetition_penalty": null,
+      "strict_tools": false,
+      "video_mode": "mp4",
+      "video_fps": 8,
+      "init_kwargs": {
+        "max_output_tokens": 96,
+        "drop_inputs": true,
+        "name": "vLLM",
+        "model": "Qwen/Qwen3-VL-8B-Instruct-FP8",
+        "gpu_memory_utilization": 0.3,
+        "max_model_len": 8192,
+        "video_mode": "mp4",
+        "video_fps": 8
+      }
+    },
+    {
+      "name": "VideoOverlay",
+      "type": "VideoOverlay",
+      "connections": [
+        {
+          "to": "VideoOutput",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 915.5,
+        "y": 100
+      },
+      "font": "/opt/NanoLLM/nano_llm/fonts/IBMPlexSansSC-Bold.ttf",
+      "font_size": 32.0,
+      "prefix_text": null,
+      "color": "#78d715",
+      "background": "#000000",
+      "opacity": 0.4,
+      "x": 5,
+      "y": 5,
+      "line_spacing": 38,
+      "line_length": null,
+      "return_copy": true,
+      "init_kwargs": {
+        "font": "/opt/NanoLLM/nano_llm/fonts/IBMPlexSansSC-Bold.ttf",
+        "font_size": 32.0,
+        "color": "#78d715",
+        "background": "#000000",
+        "opacity": 0.4,
+        "x": 5,
+        "y": 5,
+        "line_spacing": 38,
+        "return_copy": true,
+        "name": "VideoOverlay"
+      }
+    },
+    {
+      "name": "VideoOutput",
+      "type": "VideoOutput",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 11
+      },
+      "layout_node": {
+        "x": 1125,
+        "y": 97.75
+      },
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "preview_max_side": 0,
+      "mjpeg_port": 10000,
+      "init_kwargs": {
+        "video_output": "display://",
+        "video_output_codec": "null",
+        "ROI": false,
+        "ROI_Coordinates": "0,0,1,1",
+        "ROI_color": "#ff0000",
+        "name": "VideoOutput"
+      }
+    },
+    {
+      "name": "RateLimit",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "AutoPrompt_ICL",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 280,
+        "y": 89.75
+      },
+      "rate": 8.0,
+      "chunk": null,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 8.0,
+        "drop_inputs": true,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "AutoPrompt_ICL",
+      "type": "AutoPrompt_ICL",
+      "connections": [
+        {
+          "to": "vLLM",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 484.25,
+        "y": 204
+      },
+      "template": "<reset><video><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image></video>This video is from a factory station where an operator reviews printed circuit board images in an automated optical inspection (AOI) program on a monitor. In one sentence, describe what is happening right now: what the operator is doing and which part of the board is shown (mention at most three component labels). Describe only what you can see; do not guess defects unless the screen clearly marks one.",
+      "seq_replace_mode": true,
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "init_kwargs": {
+        "template": "<reset><video><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image><image></video>This video is from a factory station where an operator reviews printed circuit board images in an automated optical inspection (AOI) program on a monitor. In one sentence, describe what is happening right now: what the operator is doing and which part of the board is shown (mention at most three component labels). Describe only what you can see; do not guess defects unless the screen clearly marks one.",
+        "seq_replace_mode": true,
+        "ROI": false,
+        "ROI_Coordinates": "0,0,1,1",
+        "name": "AutoPrompt_ICL"
+      }
+    },
+    {
+      "name": "VideoSource",
+      "type": "VideoSource",
+      "connections": [
+        {
+          "to": "VideoOverlay",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "RateLimit",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 76.75,
+        "y": 82
+      },
+      "init_kwargs": {
+        "video_input": "/data/videos/demo/PCBInspection_C0128.mp4",
+        "video_input_width": 1280,
+        "video_input_height": 720,
+        "video_input_codec": "null",
+        "loops": -1,
+        "num_buffers": 120,
+        "return_copy": true,
+        "return_tensors": "cuda",
+        "name": "VideoSource"
+      }
+    }
+  ]
+}

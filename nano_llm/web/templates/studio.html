@@ -9,6 +9,7 @@
     
     <link rel="stylesheet" href="/static/bootstrap.css">
     <link rel="stylesheet" href="/static/studio.css">
+    <link rel="stylesheet" href="/static/sensor_view.css">
 
     <!-- jQuery -->
     <script type='text/javascript' src="/static/jquery-3.6.3.min.js"></script>
@@ -17,6 +18,7 @@
     <!-- Select2 -->
     <script type='text/javascript' src="/static/select2.min.js"></script>
 
+    <script type='text/javascript' src="/static/sensor_view.js"></script>
     <script type='text/javascript' src="/static/studio.js"></script>
     
     <script type="text/javascript">
@@ -49,7 +51,11 @@
           <div class="collapse navbar-collapse flex-grow-1 text-right" id="navbarToggler">
             <ul class="navbar-nav ms-auto flex-nowrap"> <!-- me-auto mb-2 mb-lg-0 -->
               <li class="nav-item">
-                <a class="nav-link no-hover-color">V3.0</a>
+                <a class="nav-link no-hover-color" title="Edge Agent version (VERSION file)">v{{ edge_agent_version }}</a>
+              </li>
+              <li class="nav-item">
+                <!-- the display page for whatever preset is loaded (spec 2026-11-06-generic-kiosk-display) -->
+                <a class="nav-link" id="navbarDisplayMode" href="/kiosk?screen=auto">Display Mode</a>
               </li>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" id="navbarAgent" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -71,10 +77,14 @@
               <li class="nav-item">
                 <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#audioDialog">Audio</a>
               </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#videoDialog">Video</a>
+              </li>
             </ul>
           </div>
-          <span class="navbar-nav ms-auto me-0 flex-row align-items-center">
+          <span id="navbarButtons" class="navbar-nav ms-auto me-0 flex-row align-items-center">
             <button id="audio-input-mute" class="btn btn-primary btn-circle btn-md bi bi-mic-mute-fill ms-1 me-1" type="button" title="Mute/unmute the microphone" onclick="muteAudioInput()"></button>
+            <button id="video-input-mute" class="btn btn-primary btn-circle btn-md bi bi-camera-video-off-fill me-1" type="button" title="Enable/disable the camera" onclick="toggleVideoInput()"></button>
             <button id="audio-output-mute" class="btn btn-primary btn-circle btn-md bi bi-volume-up-fill me-1" type="button" title="Mute/unmute the speakers" onclick="muteAudioOutput()"></button>
             <span id="Tegrastats_node_stats" class="ms-1 px-2 py-1" style="background-color: rgba(0,0,0,1); font-size: 75%; font-family: monospace, monospace;"></span>
           </span>
@@ -110,11 +120,6 @@
     </div>
 
     <script>
-        // Call the autoSavePreset() function every 5 seconds
-        setInterval(function() {
-          autoSavePreset("LastPipeline");
-        }, 5000);  // 5000 milliseconds is 5 seconds
-
         function saveCurrentPipeline() {
           let isSaved = false;
 
@@ -141,10 +146,8 @@
       }
 
       function discardPipeline() {
-        // Add the logic to discard the current pipeline here
+        // removeAll() restarts into an empty pipeline (and shows the reload message itself)
         removeAll()
-        // After discarding, restart or proceed to the next step
-        restartPipeline();
       }
 
      function restartPipeline() {
@@ -322,7 +325,29 @@
       </div>
     </div>
 
-    
+    <!-- Video settings dialog -->
+    <div class="modal fade" id="videoDialog" tabindex="-1" aria-labelledby="videoDialogLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="videoDialogLabel">Video Settings</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="color: #eeeeee;"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="video-input-select" class="form-label">Input Device (Camera)</label>
+              <select id="video-input-select" name="video-input-select" class="form-select" onchange="onVideoInputDeviceChange()"></select>
+            </div>
+            <div class="form-text">Use the camera button in the top-right corner to turn the camera on or off.</div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
     <!-- Alert Messages -->
     <div id="alert_container" class="container"> <!--class="fixed-top"-->
       <div id="alert_window" class="alert mb-0" style="background-color: rgba(48,48,48,1.0); display: none">

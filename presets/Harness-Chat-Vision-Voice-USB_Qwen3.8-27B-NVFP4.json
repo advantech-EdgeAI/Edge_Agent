@@ -1,0 +1,590 @@
+{
+  "version": "24.7",
+  "globals": {
+    "GraphEditor": {
+      "layout_grid": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 11
+      },
+      "layout_grid_pipeline": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 11
+      }
+    },
+    "TerminalPlugin": {
+      "layout_grid": {
+        "x": 0,
+        "y": 46,
+        "w": 9,
+        "h": 6
+      },
+      "layout_grid_pipeline": {
+        "x": 0,
+        "y": 24,
+        "w": 9,
+        "h": 6
+      }
+    },
+    "Tools_Hub_tracking": {
+      "layout_grid": {
+        "x": 0,
+        "y": 33,
+        "w": 9,
+        "h": 7
+      },
+      "layout_grid_pipeline": {
+        "x": 0,
+        "y": 11,
+        "w": 9,
+        "h": 7
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "UserPrompt",
+      "type": "UserPrompt",
+      "connections": [
+        {
+          "to": "AgentLoop",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 2
+      },
+      "layout_node": {
+        "x": -379,
+        "y": -300
+      },
+      "init_kwargs": {},
+      "layout_grid_pipeline": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 2
+      }
+    },
+    {
+      "name": "AgentLoop",
+      "type": "AgentLoop",
+      "connections": [
+        {
+          "to": "KokoroTTS",
+          "input": 0,
+          "output": 2
+        },
+        {
+          "to": "WakeWordFeedback",
+          "input": 0,
+          "output": 2
+        },
+        {
+          "to": "Tools_Hub",
+          "input": 0,
+          "output": 4
+        },
+        {
+          "to": "Skills_Hub",
+          "input": 0,
+          "output": 4
+        },
+        {
+          "to": "SafetyReview",
+          "input": 0,
+          "output": 4
+        },
+        {
+          "to": "vLLM",
+          "input": 0,
+          "output": 5
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 5,
+        "w": 4,
+        "h": 6
+      },
+      "layout_grid_pipeline": {
+        "x": 8,
+        "y": 5,
+        "w": 4,
+        "h": 6
+      },
+      "layout_node": {
+        "x": -169,
+        "y": -331
+      },
+      "system_prompt": "You are an assistant running on an Advantech edge device. Always reply in Traditional Chinese (繁體中文), whatever language tools or instructions use.\n\n【語音模式】你的最終回答會直接由 TTS 念給使用者聽，使用者看不到格式。最終回答必須：\n1. 一到兩句口語短句，總長不超過 50 個字，先講結論，只講使用者問的重點。\n2. 就算被要求描述畫面或總結，也只挑最重要的兩三樣講，不要逐一列舉。\n3. 純文字一段話：不要 Markdown 符號、條列、換行、emoji。\n4. 不要寒暄、不要重複問題、結尾不要反問「還需要什麼協助」。\n5. 不要念出工具名稱或英文代號（像相機的 source 名稱、start_tracking），改用口語，例如「深度相機」「第一台相機」。\n6. 距離照工具給的「念作」念，前面加「大約」：工具說「36 cm（念作：三十六公分）」就念「大約三十六公分」。不要自己把數字換成中文。\n工具照常使用，以上規則只限制最終回答。\n範例：問「你會做什麼？」答「我可以看相機畫面、量距離，也能幫你盯著東西。」問「畫面裡有什麼？」答「前面有兩個人，後面是一排展示架。」\n追蹤物件時，只說物體名稱、數量和距離，不要念出 #編號 或信心分數。\n問距離、位置或畫面裡有什麼時，一定要呼叫工具量測或看畫面，不能憑印象或前面的數字回答。\n\n【相機與距離】\n- 問「XX 離多遠」（只有相機清單標 depth 的相機能量距離；清單裡沒有這種相機，就直接說這裡量不了距離）：\n  - 常見物品（人、杯子、瓶子、手機、包包、椅子、筆電）：start_tracking(objects=\"英文名稱，加顏色\", keep_tracking=false)，回覆直接給距離。\n  - 其他東西（沒有常見名稱的：展品、商品、標誌、自製零件、玩具）：先 read_camera_frame(source=深度相機)，在畫面上框住整個物體（0–1000 座標，左上 0,0），再呼叫 track_object_in_frame(box=\"x1,y1,x2,y2\", label=\"英文短名\", keep_tracking=false)，例如 box=\"420,300,560,610\"（不填 source 就是你剛看的那台；同一次看了兩台以上要填 source）；看回覆附圖，框到別的東西就重看畫面、同一個 label 再框一次。\n  - 回覆是 weak match 或 not seen 時，改用框選。\n- 要持續追蹤（「幫我盯著它」）：同樣的工具，keep_tracking 不填；換新目標會取代原本追蹤的（框選的也是），使用者說「也、一起、再加」時才加 add=true。框選後回覆 Nothing matched 時，是框偏了，照附圖紅框重看畫面再框一次，不要推給光線。",
+      "tool_guidance": "Tool use: when a tool can do what the user asks, call it right away instead of asking whether to proceed. Report the exact path or command a tool returned. Never claim you created, changed or deleted a file, or ran a command, unless you called the matching tool in this turn and saw its result.",
+      "max_output_tokens": 1536,
+      "thinking": "off",
+      "max_rounds": 50,
+      "keep_images": 4,
+      "protect_rounds": 2,
+      "compact_at": 0.85,
+      "compact_to": 0.6,
+      "max_tool_result_ratio": 0.25,
+      "tool_timeout": 120.0,
+      "auto_continue": 3,
+      "init_kwargs": {
+        "max_output_tokens": 1536,
+        "name": "AgentLoop",
+        "keep_images": 4,
+        "system_prompt": "You are an assistant running on an Advantech edge device. Always reply in Traditional Chinese (繁體中文), whatever language tools or instructions use.\n\n【語音模式】你的最終回答會直接由 TTS 念給使用者聽，使用者看不到格式。最終回答必須：\n1. 一到兩句口語短句，總長不超過 50 個字，先講結論，只講使用者問的重點。\n2. 就算被要求描述畫面或總結，也只挑最重要的兩三樣講，不要逐一列舉。\n3. 純文字一段話：不要 Markdown 符號、條列、換行、emoji。\n4. 不要寒暄、不要重複問題、結尾不要反問「還需要什麼協助」。\n5. 不要念出工具名稱或英文代號（像相機的 source 名稱、start_tracking），改用口語，例如「深度相機」「第一台相機」。\n6. 距離照工具給的「念作」念，前面加「大約」：工具說「36 cm（念作：三十六公分）」就念「大約三十六公分」。不要自己把數字換成中文。\n工具照常使用，以上規則只限制最終回答。\n範例：問「你會做什麼？」答「我可以看相機畫面、量距離，也能幫你盯著東西。」問「畫面裡有什麼？」答「前面有兩個人，後面是一排展示架。」\n追蹤物件時，只說物體名稱、數量和距離，不要念出 #編號 或信心分數。\n問距離、位置或畫面裡有什麼時，一定要呼叫工具量測或看畫面，不能憑印象或前面的數字回答。\n\n【相機與距離】\n- 問「XX 離多遠」（只有相機清單標 depth 的相機能量距離；清單裡沒有這種相機，就直接說這裡量不了距離）：\n  - 常見物品（人、杯子、瓶子、手機、包包、椅子、筆電）：start_tracking(objects=\"英文名稱，加顏色\", keep_tracking=false)，回覆直接給距離。\n  - 其他東西（沒有常見名稱的：展品、商品、標誌、自製零件、玩具）：先 read_camera_frame(source=深度相機)，在畫面上框住整個物體（0–1000 座標，左上 0,0），再呼叫 track_object_in_frame(box=\"x1,y1,x2,y2\", label=\"英文短名\", keep_tracking=false)，例如 box=\"420,300,560,610\"（不填 source 就是你剛看的那台；同一次看了兩台以上要填 source）；看回覆附圖，框到別的東西就重看畫面、同一個 label 再框一次。\n  - 回覆是 weak match 或 not seen 時，改用框選。\n- 要持續追蹤（「幫我盯著它」）：同樣的工具，keep_tracking 不填；換新目標會取代原本追蹤的（框選的也是），使用者說「也、一起、再加」時才加 add=true。框選後回覆 Nothing matched 時，是框偏了，照附圖紅框重看畫面再框一次，不要推給光線。",
+        "thinking": "off"
+      }
+    },
+    {
+      "name": "Tools_Hub",
+      "type": "Tools_Hub",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 20,
+        "w": 4,
+        "h": 4
+      },
+      "layout_node": {
+        "x": 492.5,
+        "y": -315
+      },
+      "enabled_tools": {
+        "read_file": false,
+        "write_file": false,
+        "edit_file": false,
+        "run_command": false
+      },
+      "init_kwargs": {
+        "enabled_tools": {
+          "read_file": false,
+          "write_file": false,
+          "edit_file": false,
+          "run_command": false
+        },
+        "name": "Tools_Hub",
+        "module_settings": {
+          "tracking": {
+            "model": "yolov8x-worldv2.pt",
+            "confidence": 0.08,
+            "max_fps": 10.0
+          }
+        },
+        "panels": {
+          "tracking": true
+        }
+      },
+      "module_settings": {
+        "tracking": {
+          "model": "yolov8x-worldv2.pt",
+          "confidence": 0.08,
+          "max_fps": 10.0
+        }
+      },
+      "panels": {
+        "tracking": true
+      },
+      "layout_grid_pipeline": {
+        "x": 8,
+        "y": 20,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "name": "Skills_Hub",
+      "type": "Skills_Hub",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 30,
+        "w": 4,
+        "h": 4
+      },
+      "layout_node": {
+        "x": 492.5,
+        "y": -415
+      },
+      "enabled_skills": {
+        "distance_by_tracking": false
+      },
+      "char_budget": 1500,
+      "init_kwargs": {
+        "name": "Skills_Hub",
+        "enabled_skills": {
+          "distance_by_tracking": false
+        }
+      },
+      "layout_grid_pipeline": {
+        "x": 8,
+        "y": 30,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "name": "SafetyReview",
+      "type": "SafetyReview",
+      "connections": [],
+      "layout_grid": {
+        "x": 8,
+        "y": 15,
+        "w": 4,
+        "h": 4
+      },
+      "layout_node": {
+        "x": 494,
+        "y": -519.5
+      },
+      "confirm_timeout_seconds": 60.0,
+      "init_kwargs": {
+        "confirm_timeout_seconds": 60.0,
+        "name": "SafetyReview"
+      },
+      "layout_grid_pipeline": {
+        "x": 8,
+        "y": 15,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "name": "vLLM",
+      "type": "vLLM",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 493,
+        "y": -173
+      },
+      "max_output_tokens": 256,
+      "system_prompt": "You are a helpful assistant.",
+      "thinking": "off",
+      "thinking_token_budget": 0,
+      "temperature": null,
+      "top_p": null,
+      "top_k": null,
+      "min_p": null,
+      "presence_penalty": null,
+      "repetition_penalty": null,
+      "strict_tools": false,
+      "video_mode": "mp4",
+      "video_fps": 8,
+      "init_kwargs": {
+        "model": "nvidia/Qwen3.8-27B-NVFP4",
+        "max_model_len": 16384,
+        "name": "vLLM",
+        "mtp_speculative_tokens": 1
+      },
+      "mtp_speculative_tokens": 1
+    },
+    {
+      "name": "VideoSource",
+      "type": "VideoSource",
+      "connections": [
+        {
+          "to": "camera1",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "VideoOutput",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 680,
+        "y": -114.5
+      },
+      "init_kwargs": {
+        "video_input": "/dev/video0",
+        "video_input_width": 640,
+        "video_input_height": 480,
+        "return_copy": true,
+        "return_tensors": "cuda",
+        "name": "VideoSource"
+      }
+    },
+    {
+      "name": "VideoOutput",
+      "type": "VideoOutput",
+      "connections": [],
+      "layout_grid": {
+        "x": 0,
+        "y": 11,
+        "w": 3,
+        "h": 7
+      },
+      "layout_node": {
+        "x": 875,
+        "y": -60
+      },
+      "ROI": false,
+      "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "mjpeg_port": 10000,
+      "init_kwargs": {
+        "video_output": "webrtc://@:8554/output",
+        "name": "VideoOutput"
+      },
+      "layout_grid_sensor": {
+        "x": 0,
+        "y": 0,
+        "w": 3,
+        "h": 8
+      }
+    },
+    {
+      "name": "camera1",
+      "type": "FrameCache",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 871,
+        "y": -173.5
+      },
+      "init_kwargs": {
+        "name": "camera1",
+        "description": "USB 彩色相機，沒有深度"
+      },
+      "description": "USB 彩色相機，沒有深度"
+    },
+    {
+      "name": "PerformanceMonitor",
+      "type": "PerformanceMonitor",
+      "connections": [],
+      "layout_grid": {
+        "x": 0,
+        "y": 33,
+        "w": 9,
+        "h": 6
+      },
+      "layout_node": {
+        "x": -380.5,
+        "y": 67
+      },
+      "refresh_seconds": 1.0,
+      "init_kwargs": {
+        "refresh_seconds": 1.0,
+        "name": "PerformanceMonitor"
+      },
+      "layout_grid_pipeline": {
+        "x": 0,
+        "y": 11,
+        "w": 8,
+        "h": 6
+      }
+    },
+    {
+      "name": "VADFilter",
+      "type": "VADFilter",
+      "connections": [
+        {
+          "to": "WhisperASR",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": -760,
+        "y": -128
+      },
+      "vad_threshold": 0.5,
+      "vad_window": 1.0,
+      "interrupt_after": 0.5,
+      "audio_chunk": 1600,
+      "pre_roll": 0.5,
+      "init_kwargs": {
+        "vad_threshold": 0.5,
+        "vad_window": 1.0,
+        "interrupt_after": 0.5,
+        "audio_chunk": 1600,
+        "name": "VADFilter",
+        "pre_roll": 0.5
+      }
+    },
+    {
+      "name": "WhisperASR",
+      "type": "WhisperASR",
+      "connections": [
+        {
+          "to": "WakeWord",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": -568,
+        "y": -125
+      },
+      "partial_transcripts": 0.25,
+      "init_kwargs": {
+        "model": "small",
+        "language_code": "zh",
+        "partial_transcripts": 0.25,
+        "name": "WhisperASR"
+      }
+    },
+    {
+      "name": "KokoroTTS",
+      "type": "KokoroTTS",
+      "connections": [
+        {
+          "to": "RateLimit",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 61,
+        "y": -83.5
+      },
+      "voice": "zf_001",
+      "rate": 1.0,
+      "buffering": [
+        "punctuation"
+      ],
+      "init_kwargs": {
+        "voice": "zf_001",
+        "voice_rate": 1.0,
+        "device": "cuda",
+        "name": "KokoroTTS"
+      }
+    },
+    {
+      "name": "RateLimit",
+      "type": "RateLimit",
+      "connections": [
+        {
+          "to": "WebAudioOut",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "WakeWordFeedback",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 300,
+        "y": 114
+      },
+      "rate": 1.0,
+      "chunk": 4800,
+      "drop_inputs": true,
+      "init_kwargs": {
+        "rate": 1.0,
+        "chunk": 4800,
+        "drop_inputs": true,
+        "on_demand": false,
+        "name": "RateLimit"
+      }
+    },
+    {
+      "name": "WebAudioOut",
+      "type": "WebAudioOut",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 484.5,
+        "y": 217
+      },
+      "init_kwargs": {}
+    },
+    {
+      "name": "WakeWord",
+      "type": "WakeWord",
+      "connections": [
+        {
+          "to": "AgentLoop",
+          "input": 0,
+          "output": 0
+        },
+        {
+          "to": "KokoroTTS",
+          "input": 0,
+          "output": 1
+        },
+        {
+          "to": "WebAudioOut",
+          "input": 0,
+          "output": 2
+        }
+      ],
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      },
+      "layout_grid_pipeline": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      },
+      "layout_node": {
+        "x": -379,
+        "y": -149
+      },
+      "require_wake_word": true,
+      "listen_seconds": 8.0,
+      "thinking_timeout": 120.0,
+      "greetings": "嗨，我是小研，有什麼可以幫你？|我在，請說。|你好，想問什麼呢？",
+      "wake_prefixes": "嘿 黑 嗨 欸 诶 哎 hey hi hai",
+      "wake_first_chars": "小曉晓筱笑孝肖校效消",
+      "wake_second_chars": "研言嚴严燕妍岩顏颜延炎艷艳焰雁彥彦晏",
+      "echo_threshold": 0.85,
+      "wake_key": "PageDown",
+      "init_kwargs": {
+        "require_wake_word": true,
+        "name": "WakeWord"
+      }
+    },
+    {
+      "name": "WakeWordFeedback",
+      "type": "WakeWordFeedback",
+      "connections": [],
+      "layout_grid": {},
+      "layout_node": {
+        "x": 492,
+        "y": 64.5
+      },
+      "init_kwargs": {
+        "name": "WakeWordFeedback"
+      }
+    },
+    {
+      "name": "WebAudioIn",
+      "type": "WebAudioIn",
+      "connections": [
+        {
+          "to": "VADFilter",
+          "input": 0,
+          "output": 0
+        }
+      ],
+      "init_kwargs": {},
+      "layout_node": {
+        "x": -960,
+        "y": -128
+      }
+    }
+  ]
+}

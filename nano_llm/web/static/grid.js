@@ -1,14 +1,19 @@
 
 var grid;
 var drawflow;
+
+// Which widgets the sensor view (the old ?view=camera) shows: SENSOR_WIDGET_TYPES and
+// isSensorWidget() in sensor_view.js (docs/superpowers/specs/2026-10-13-sensor-view-design.md §2.2).
+
 var pluginTypes;
 var moduleTypes;
 var nodeIdToName = {};
-var stateListeners = {};
-var outputListeners = {};
 var videoFrameListeners = {};  // plugin_name -> callback(ArrayBuffer)
 var suppressGridAdded = false;   // suppress 'added' events during batch plugin init
+var widgetsPlacedFromSave = new Set();   // ids being added at a saved position (see addGridWidget)
 var suppressGridRemoved = false; // suppress 'removed' events during programmatic plugin removal
+var webVideoInPlugins = new Set();  // names of WebVideoIn plugins currently on the graph (see audio.js setWebVideoInCount())
+
 
 // Called by studio.js onWebsocketMsg when a MESSAGE_VIDEO_FRAME arrives.
 // metadata = first 8 chars of plugin name (null-padded ASCII from server).
@@ -17,12 +22,16 @@ function onVideoFrameReceived(frameData, metadata) {
     // Match on prefix: server encodes up to 8 chars of the plugin name
     if (!metadata || pluginName.startsWith(metadata) || metadata.startsWith(pluginName.substring(0, 8))) {
       listener(frameData);
+      sensorSignalSeen(pluginName);   // sensor_view.js: clears "Signal lost"
       return;
     }
   }
   // Fallback: single registered listener
   const keys = Object.keys(videoFrameListeners);
-  if (keys.length === 1) videoFrameListeners[keys[0]](frameData);
+  if (keys.length === 1) {
+    videoFrameListeners[keys[0]](frameData);
+    sensorSignalSeen(keys[0]);
+  }
 }
 var ignoreGraphEvents=false;
 
@@ -57,29 +66,58 @@ function customizeNode(plugin_name, color = '#add8e6', label = 'Advantech', labe
 function addGrid() {
   grid = GridStack.init({'column': 12, 'cellHeight': 50, 'float': true});
 
+  // Dual-screen exhibition display (2026-09-19): the camera-only kiosk screen is
+  // locked against drag/resize by default so booth visitors can't rearrange it -
+  // use ?view=camera&edit=1 during setup to unlock it temporarily, then drop
+  // &edit=1 again before the show. ?view=pipeline and the everyday no-param URL
+  // stay fully interactive, exactly like today.
+  if( viewMode === 'sensor' && !viewEditUnlocked ) {
+    grid.enableMove(false);
+    grid.enableResize(false);
+  }
+
   grid.on('added', function(event, items) {
     // Suppress during batch load: server-saved positions (restored via get_state_dict)
     // are authoritative. Letting GridStack's auto-placement overwrite them causes
     // position drift every container restart.
     if (!items || suppressGridAdded) return;
     items.forEach((item) => {
+      if (widgetsPlacedFromSave.has(item.id))
+        return;                                         // placed from a saved position: nothing new
       console.log(`grid widget ${item.id} was added`, item);
       sendWebsocket({
         'config_plugin': {
           'name': item.id,
-          'layout_grid': {'x': item.x, 'y': item.y, 'w': item.w, 'h': item.h}
+          [layoutKey(viewMode)]: {'x': item.x, 'y': item.y, 'w': item.w, 'h': item.h}   // sensor_view.js
       }});
     });
   });
 
+  // Only a drag or resize by the user saves positions. GridStack also fires 'change' when it pushes
+  // widgets out of an overlap - e.g. the no-param page shows the sensor view's and the pipeline
+  // view's widgets together, and those two layouts share coordinates on purpose - and those pushed
+  // positions used to overwrite the saved ones (2026-10-14).
+  let userLayoutEdits = 0;
+  grid.on('dragstart resizestart', function() { userLayoutEdits++; });
+  grid.on('dragstop resizestop', function() {
+    setTimeout(() => { userLayoutEdits = Math.max(0, userLayoutEdits - 1); }, 0);   // after 'change'
+  });
+
   grid.on('change', function(event, items) {
     if (!items) return;  // guard against bubbled DOM events (e.g. <select> change)
-    items.forEach((item) => {
+    if (userLayoutEdits === 0) {
+      console.log('grid layout changed without a user drag/resize (overlap, late update) - not saved');
+      return;
+    }
+    // in a view, every widget on it is saved (not just the moved ones): the first edit snapshots the
+    // whole view, so it no longer follows layout_grid / the no-param page
+    const changed = viewMode ? grid.engine.nodes : items;
+    changed.forEach((item) => {
       console.log(`grid widget ${item.id} changed position/size`, item);
       sendWebsocket({
         'config_plugin': {
           'name': item.id,
-          'layout_grid': {'x': item.x, 'y': item.y, 'w': item.w, 'h': item.h}
+          [layoutKey(viewMode)]: {'x': item.x, 'y': item.y, 'w': item.w, 'h': item.h}
       }});
     });
   });
@@ -91,7 +129,7 @@ function addGrid() {
       sendWebsocket({
         'config_plugin': {
           'name': item.id,
-          'layout_grid': {}
+          [layoutKey(viewMode)]: {}             // closed on this view only
       }});
     });
   });
@@ -169,8 +207,12 @@ function addGridWidget(id, title, html, titlebar_html, grid_options) {
   
   if( ! ('id' in grid_options) )
     grid_options['id'] = plugin;
-    
+
+  // created at its saved place: GridStack's 'added' (fired inside addWidget) must not save it again
+  if( placedFromSave(grid_options) )
+    widgetsPlacedFromSave.add(grid_options['id']);
   const widget = grid.addWidget(card_html, grid_options);
+  widgetsPlacedFromSave.delete(grid_options['id']);
   
   console.log(`created grid widget id=${id} title=${title}`, widget);
   
@@ -193,8 +235,18 @@ function addGridWidget(id, title, html, titlebar_html, grid_options) {
   }
   
   addStateListener(plugin, function(state_dict) {
-    const lg = state_dict['layout_grid'];
-    if( lg && Object.keys(lg).length > 0 ) {
+    const lg = pickLayout(state_dict, viewMode);    // this view's own position, else layout_grid
+    // A delayed state_dict response (e.g. a redundant plugin_added resend
+    // triggered by another client reconnecting - see CLAUDE.md on the multi-
+    // client broadcast) can arrive after this widget was already removed from
+    // the grid (camera view removes GraphEditor's widget right after creating
+    // it). grid.update() on a detached widget still re-registers it with
+    // GridStack's layout engine at its saved position, which can then collide
+    // with and displace whatever real widget now occupies that space - found
+    // live 2026-09-22 as the cause of camera-view video widgets "falling"
+    // whenever the pipeline-view page reloaded. Only apply the update if the
+    // widget is still actually attached to the page.
+    if( lg && Object.keys(lg).length > 0 && document.body.contains(widget) ) {
       console.log(`updating ${plugin} grid widget`, lg);
       grid.update(widget, lg);
     }
@@ -241,10 +293,6 @@ function addTextInputWidget(name, id, title, grid_options) {
   return widget;
 }
 
-function scrollBottom(container) {  // https://stackoverflow.com/a/21067431
-  container.scrollTop = container.scrollHeight - container.clientHeight;
-  //console.log(`scrolling to bottom ${container.scrollTop} ${container.scrollHeight} ${container.clientHeight}`);
-}
 
 // Global object to track listeners
 const stateListenerRegistry = {};
@@ -283,11 +331,33 @@ function addTextStreamWidget(name, id, title, grid_options) {
    }
    
    let isScrolledToBottom = chc.scrollHeight - chc.clientHeight <= chc.scrollTop + 1;
-   
-   chc.innerHTML += `
-     <${el_type} style="color: ${state_dict['color']}">${state_dict['text']}</${el_type}>
-   `;
-   
+
+   // appendChild (not innerHTML +=) - a growing innerHTML += re-serializes and
+   // re-parses the ENTIRE accumulated history on every single update, which is
+   // fine for occasional chat-style bursts but becomes O(n^2) and eventually
+   // freezes the tab against a continuous high-rate source (e.g. AutoLabeler
+   // pushing 20-30 detection messages/sec) - see docs/superpowers/specs/
+   // 2026-08-27-auto-labeling-pipeline-design.md.
+   const el = document.createElement(el_type);
+   el.style.color = state_dict['color'];
+   // innerHTML here is on a single new (small) element, not the accumulating
+   // history container - state_dict['text'] arrives pre-escaped from
+   // TextStream.process() (nano_llm/plugins/llm/text_stream.py) with '\n'
+   // deliberately converted to a literal '<br/>' tag for rendering,
+   // so this must stay innerHTML, not textContent, or multi-line messages
+   // would show a literal "<br/>" instead of a line break.
+   el.innerHTML = state_dict['text'];
+   chc.appendChild(el);
+
+   // Cap retained history so long-running continuous streams (auto-labeling,
+   // any future high-rate TextStream consumer) don't grow the DOM without
+   // bound even with appendChild - drop the oldest entries once there are
+   // too many to keep rendering/scroll performance bounded.
+   const MAX_HISTORY_ENTRIES = 300;
+   while (chc.childNodes.length > MAX_HISTORY_ENTRIES) {
+     chc.removeChild(chc.firstChild);
+   }
+
    if (isScrolledToBottom) { // Auto-scroll unless user has scrolled up
      scrollBottom(chc);
    }
@@ -307,6 +377,80 @@ function addTextStreamWidget(name, id, title, grid_options) {
  };
  
  return widget;
+}
+
+function addDatasetCollectorControlWidget(name, id, title, grid_options) {
+  const status_id = `${id}_status`;
+  const html = `
+    <div class="p-2">
+      <button id="${id}_start" class="btn btn-success btn-sm me-2">Start</button>
+      <button id="${id}_stop" class="btn btn-danger btn-sm">Stop</button>
+      <p id="${status_id}" class="mt-2 mb-0 text-muted"></p>
+    </div>
+  `;
+  let widget = addGridWidget(id, title, html, null, Object.assign({w: 3, h: 3}, grid_options));
+
+  $(`#${id}_start`).on('click', function() {
+    sendWebsocket({[name]: {'start_collecting': {}}});
+    document.getElementById(status_id).textContent = 'Collecting...';
+  });
+
+  $(`#${id}_stop`).on('click', function() {
+    sendWebsocket({[name]: {'stop_and_package': {}}});
+    document.getElementById(status_id).textContent = 'Packaging...';
+  });
+
+  return widget;
+}
+
+function addDatasetLoaderWidget(name, id, title, grid_options) {
+  const status_id = `${id}_status`;
+  const html = `
+    <div class="p-2">
+      <input type="file" id="${id}_picker" webkitdirectory multiple class="form-control form-control-sm mb-2">
+      <button id="${id}_start" class="btn btn-primary btn-sm" disabled>Start Labeling</button>
+      <p id="${status_id}" class="mt-2 mb-0 text-muted"></p>
+    </div>
+  `;
+  let widget = addGridWidget(id, title, html, null, Object.assign({w: 3, h: 3}, grid_options));
+
+  let uploaded_dir = null;
+
+  $(`#${id}_picker`).on('change', async function(evt) {
+    const files = evt.target.files;
+    const status = document.getElementById(status_id);
+    status.textContent = `Uploading ${files.length} file(s)...`;
+    $(`#${id}_start`).prop('disabled', true);
+
+    const form = new FormData();
+    for (const f of files)
+      form.append('files', f, f.name);
+
+    try {
+      const resp = await fetch('/upload_dataset', {method: 'POST', body: form});
+      const data = await resp.json();
+      uploaded_dir = data.dir;
+      // data.count is what the server actually staged to disk - not files.length
+      // (what the browser sent) - so a collision-driven rename (or any other reason
+      // a file didn't end up staged 1:1) never silently misreports the count.
+      status.textContent = `${data.count} file(s) uploaded. Ready to start.`;
+      $(`#${id}_start`).prop('disabled', false);
+    } catch (err) {
+      status.textContent = `Upload failed: ${err}`;
+      console.error('dataset upload failed', err);
+    }
+  });
+
+  $(`#${id}_start`).on('click', function() {
+    if (!uploaded_dir)
+      return;
+    sendWebsocket({'DatasetCollector': {'start_collecting': {}}});
+    sendWebsocket({[name]: {'start_batch': uploaded_dir}});
+    document.getElementById(status_id).textContent = 'Labeling in progress...';
+    $(`#${id}_start`).prop('disabled', true);
+  });
+
+  return widget;
 }
 
 // If you don't have a removeStateListener function, you can implement it like this
@@ -374,16 +518,6 @@ function addTerminalWidget(name, id, title, grid_options) {
   return widget;
 }
 
-// https://stackoverflow.com/a/6234804
-function escapeHTML(unsafe) {
-  return unsafe
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
-    .replaceAll('\n', '<br/>');
-}
 
 function updateNanoDB(name, gallery_id, search_results) {
   const contextMenuId = `contextMenu_${gallery_id}`;
@@ -653,7 +787,6 @@ function addNanoDBWidget(name, id, title, grid_options) {
 }
 
 
-
 function addChatWidget(name, id, title, grid_options) {
   const history_id = `${id}_history`;
   const input_id = `${id}_input`;
@@ -725,65 +858,352 @@ function addChatWidget_no_input(name, id, title, grid_options) {
   return widget;
 }
 
-function addChatWidget_no_input_vllm(name, id, title, grid_options) {
-  const history_id = `${id}_history`;
-
-  // Only retain the chat history display area
-  const html = `
-    <div id="${history_id}" class="bg-medium-gray p-2 mb-2" style="font-size: 100%; overflow-y: scroll; flex-grow: 1;" ondrop="onFileDrop(event)" ondragover="onFileDrag(event)"></div>
-  `;
-  
-  // Add the widget to the grid layout with specified options
-  let widget = addGridWidget(id, title, html, null, Object.assign({w: 4, h: 14}, grid_options));
-
-  // Update chat history when new messages arrive
-  addOutputListener(name, 3, function(history) {
-    updateChatHistory(history_id, history);
-  });
-
-  // Send an initial /refresh command to update the chat
-  msg = {};
-  msg[name] = {'input': 'Hello!'};
-  sendWebsocket(msg);
-
+function addChatWidget_no_input_history3(name, id, title, grid_options, type) {
+  // Backend-agnostic: used for both the 'vLLM' node (single-shot detection-preset path) and
+  // the 'AgentLoop' node (harness path) - both broadcast their chat history on output 3.
+  // The chat itself is built by mountAgentLoopChat() (chat_view.js), which the kiosk brain screen
+  // shares (docs/superpowers/specs/2026-10-20-kiosk-display-design.md §2.3). It asks the backend to
+  // re-broadcast its history with an empty input list (never a real turn - see the 2026-09
+  // 'Hello!' note in git history) and, for AgentLoop, subscribes the live timeline on channel 6.
+  let widget = addGridWidget(id, title, `<div id="${id}_chat_mount" class="d-flex flex-column flex-grow-1" style="min-height: 0;"></div>`,
+                             null, Object.assign({w: 4, h: 14}, grid_options));
+  const mount = document.getElementById(`${id}_chat_mount`);
+  const history_id = mountAgentLoopChat(mount, name, id, type);
+  const history_el = document.getElementById(history_id);
+  history_el.setAttribute('ondrop', 'onFileDrop(event)');
+  history_el.setAttribute('ondragover', 'onFileDrag(event)');
   return widget;
 }
 
+function addSafetyReviewWidget(name, channel = 1, allowConversation = false) {
+  // Called unconditionally from addPlugin() whenever a SafetyReview node exists on
+  // the graph (see the call site there for why this must NOT be gated behind
+  // addPluginGridWidget()'s layout_grid/double-click-only dispatch). Ensures the
+  // confirm dialog DOM exists and the OutputConfirmRequest (channel 1) listener is
+  // subscribed - both guarded to be idempotent, safe to call more than once, and -
+  // critically - each guarded INDEPENDENTLY of the other. A remove-then-re-add of
+  // this node clears outputListeners[name] but does NOT remove the dialog's DOM
+  // (removePlugins doesn't clean it up), so on re-add the DOM-creation guard below
+  // is false while the listener-subscription guard still needs to fire. Do not nest
+  // the latter inside the former - that was tried once and silently broke listener
+  // re-subscription after remove/re-add (dialog stops receiving broadcasts forever).
+  const dialog_id = `${name}_confirm_dialog`;
 
-function updateChatHistory(id, history) {    
-    let chj = $(`#${id}`);
-    let chc = document.getElementById(id);
-    let isScrolledToBottom = chc.scrollHeight - chc.clientHeight <= chc.scrollTop + 1;
+  // The pending-request queue lives on the dialog element itself (dialog_el.svQueue),
+  // not in a closure, for the same reason: the DOM element is what survives a
+  // remove-then-re-add, a closure created by one invocation of this function does
+  // not. showRequest() therefore takes dialog_el as a parameter rather than closing
+  // over one, so it behaves identically no matter which call's closure invokes it.
+  function showRequest(dialog_el, data) {
+    dialog_el.dataset.requestId = data['request_id'];
+    document.getElementById(`${dialog_id}_body`).innerHTML =
+      `<p>Tool: <strong>${escapeHTML(data['tool_name'])}</strong> &nbsp; (risk: ${escapeHTML(data['risk'])})</p>` +
+      `<pre>${escapeHTML(JSON.stringify(data['args'], null, 2))}</pre>`;
+    // SafetyReview: general-purpose tools (run_command) can't be allowed for the whole conversation.
+    const allowBtn = document.getElementById(`${dialog_id}_allow`);
+    if (allowBtn)
+      allowBtn.style.display = (data['allow_conversation'] !== false) ? '' : 'none';
+    bootstrap.Modal.getOrCreateInstance(dialog_el).show();
+  }
 
-    chj.empty(); // clear because server may remove partial/rejected ASR prompts
-    
-    for( let n=0; n < history.length; n++ ) {
-      const role = history[n]['role'];
-      
-      /*if( role == 'system' )
-        continue;*/
-        
-      let contents = '';
-      var hasImage = 'image' in history[n];
-      
-      if( hasImage ) {
-        contents += `<img src=${history[n]['image']} width="100%">`;
-        imageAtBottom = true;
+  if (document.getElementById(dialog_id) == null) {
+    $('body').append(`
+      <div class="modal fade" id="${dialog_id}" tabindex="-1" aria-labelledby="${dialog_id}_label" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="${dialog_id}_label">Confirm Action</h5>
+            </div>
+            <div class="modal-body" id="${dialog_id}_body"></div>
+            <div class="modal-footer">
+              <button id="${dialog_id}_deny" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Deny</button>
+              ${allowConversation ? `<button id="${dialog_id}_allow" type="button" class="btn btn-warning" data-bs-dismiss="modal">Allow for this conversation</button>` : ''}
+              <button id="${dialog_id}_confirm" type="button" class="btn btn-danger" data-bs-dismiss="modal">Confirm</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+
+    $(`#${dialog_id}_confirm`).on('click', function() {
+      const dialog_el = document.getElementById(dialog_id);
+      const request_id = dialog_el.dataset.requestId;
+      if (!request_id)
+        return;
+      sendWebsocket({[name]: {'confirm': {'request_id': request_id}}});
+      delete dialog_el.dataset.requestId;
+    });
+
+    $(`#${dialog_id}_allow`).on('click', function() {
+      const dialog_el = document.getElementById(dialog_id);
+      const request_id = dialog_el.dataset.requestId;
+      if (!request_id)
+        return;
+      sendWebsocket({[name]: {'allow_conversation': {'request_id': request_id}}});
+      delete dialog_el.dataset.requestId;
+    });
+
+    $(`#${dialog_id}_deny`).on('click', function() {
+      const dialog_el = document.getElementById(dialog_id);
+      const request_id = dialog_el.dataset.requestId;
+      if (!request_id)
+        return;
+      sendWebsocket({[name]: {'deny': {'request_id': request_id}}});
+      delete dialog_el.dataset.requestId;
+    });
+
+    // Bootstrap fires 'hidden.bs.modal' no matter how the modal closed - Confirm button,
+    // Deny button, ESC, or a backdrop click. This is the single point where "this request
+    // is done" is handled: if dataset.requestId is still set here, neither button handler
+    // above already cleared it, meaning the user dismissed some other way - treat that as an
+    // implicit deny instead of silently leaving the backend to expire it via its own 60s
+    // timeout. Then, regardless of cause, show the next queued request if any.
+    $(`#${dialog_id}`).on('hidden.bs.modal', function() {
+      const dialog_el = document.getElementById(dialog_id);
+      const leftover_request_id = dialog_el.dataset.requestId;
+      if (leftover_request_id) {
+        sendWebsocket({[name]: {'deny': {'request_id': leftover_request_id}}});
+        delete dialog_el.dataset.requestId;
       }
-      
-      if( 'text' in history[n] )
-        contents += history[n]['text'];
+      const queue = dialog_el.svQueue = dialog_el.svQueue || [];
+      if (queue.length > 0)
+        showRequest(dialog_el, queue.shift());
+    });
+  }
 
-      if( contents.length > 0 )
-        chj.append(`<div id="msg_${n}" class="chat-message-${role} mb-3">${contents}</div><br/>`);
-    }
-
-    if( isScrolledToBottom ) { // autoscroll unless the user has scrolled up
-      if( hasImage )
-        setTimeout(scrollBottom, 50, chc);  // wait for images to load to get right height
+  if (!(name in outputListeners)) {
+    addOutputListener(name, channel, function(data) {
+      if (timelineConfirmHandlers.length > 0) {
+        // An AgentLoop timeline widget MAY be present and want to render this confirmation
+        // inline on its own card instead of the modal below - see addChatWidget_no_input_
+        // history3()'s AgentLoop branch. Still routed through this SAME listener (not a
+        // second independent subscription) so there is exactly one place, not two, deciding
+        // what happens to a given OutputConfirmRequest.
+        //
+        // C1 (final whole-branch review): timelineConfirmHandlers is never de-registered
+        // (closing the widget's grid panel or removing the AgentLoop node entirely leaves the
+        // closure sitting in this array forever - see handleConfirmRequest()'s own comment),
+        // so "the array is non-empty" does NOT mean "something will actually handle this
+        // request" - it might contain only dead handlers whose widget DOM is gone. Every
+        // handler is called (not short-circuited) so any genuinely live widget among possibly
+        // several still gets a chance to claim it; only fall through to the modal below if
+        // NONE of them did.
+        let claimed = false;
+        timelineConfirmHandlers.forEach(function(handler) {
+          if (handler(name, data)) claimed = true;
+        });
+        if (claimed) return;
+      }
+      const dialog_el = document.getElementById(dialog_id);
+      const queue = dialog_el.svQueue = dialog_el.svQueue || [];
+      if (dialog_el.dataset.requestId)
+        queue.push(data);  // one already showing - queue this one instead of overwriting it
       else
-        scrollBottom(chc);
-    }
+        showRequest(dialog_el, data);
+    });
+  }
+}
+
+
+function addDatasetCollectorReadyModal(name) {
+  // Called unconditionally from addPlugin() whenever a DatasetCollector node exists
+  // on the graph - see the call site there and addSafetyReviewWidget() above for why
+  // this must NOT be gated behind addPluginGridWidget()'s layout_grid/double-click-only
+  // dispatch: a dataset can finish packaging while this node's grid widget isn't open,
+  // and a node added live via the graph editor always starts with an empty layout_grid.
+  // Mirrors addSafetyReviewWidget()'s two independently-idempotent guards below: DOM
+  // creation and listener subscription must each be safe to call more than once, and
+  // guarded INDEPENDENTLY of each other, because a remove-then-re-add of this node
+  // clears stateListeners[name] (see removePlugins()) but does NOT remove the dialog's
+  // DOM - so on re-add the DOM-creation guard is false while the listener-subscription
+  // guard still needs to fire.
+  const dialog_id = `${name}_ready_dialog`;
+
+  if (document.getElementById(dialog_id) == null) {
+    $('body').append(`
+      <div class="modal fade" id="${dialog_id}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Dataset Ready</h5>
+            </div>
+            <div class="modal-body" id="${dialog_id}_body"></div>
+            <div class="modal-footer">
+              <a id="${dialog_id}_download" class="btn btn-primary" href="#">Download</a>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  // NOTE: this listens via addStateListener() (the state-broadcast registry,
+  // stateListeners) rather than addOutputListener() (the output-channel registry,
+  // outputListeners) that addSafetyReviewWidget() above uses - a different registry,
+  // so the idempotency guard here must check stateListeners, not outputListeners.
+  if (!(name in stateListeners)) {
+    addStateListener(name, function(state_dict) {
+      const link = document.getElementById(`${dialog_id}_download`);
+      // Without this branch, the three silent dead-ends this modal exists to close
+      // (zero images after extension filtering, a nonexistent/unreadable upload
+      // folder, any packaging failure) would leave the operator staring at
+      // "Labeling in progress..." forever with zero feedback - DatasetLoader and
+      // DatasetCollector both broadcast {'ready': false, 'error': '<message>'} on
+      // these paths now (see dataset_loader.py/dataset_collector.py), so surface it
+      // here rather than falling through to the silent `!ready` return below.
+      if (state_dict['error']) {
+        document.getElementById(`${dialog_id}_body`).textContent =
+          `Error: ${state_dict['error']}`;
+        link.style.display = 'none';
+        bootstrap.Modal.getOrCreateInstance(document.getElementById(dialog_id)).show();
+        return;
+      }
+      if (!state_dict['ready'])
+        return;
+      document.getElementById(`${dialog_id}_body`).textContent =
+        `${state_dict['count']} labeled image(s) packaged.`;
+      link.style.display = '';
+      // Fetched as a blob and saved via a synthetic link instead of letting the
+      // browser's own download manager pull `download_url` directly: Chrome (and
+      // other Chromium browsers) validate a forced download's TLS cert through a
+      // stricter path than a normal page navigation, and silently fail against
+      // this project's self-signed cert with a generic "check your connection"
+      // error instead of the usual click-through warning. Routing the fetch
+      // through the page's own already-trusted connection avoids that path.
+      const download_url = `/download_dataset/${state_dict['job_id']}`;
+      link.href = download_url;
+      link.onclick = function(e) {
+        e.preventDefault();
+        fetch(download_url)
+          .then(resp => {
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            return resp.blob();
+          })
+          .then(blob => {
+            const blob_url = URL.createObjectURL(blob);
+            const temp_link = document.createElement('a');
+            temp_link.href = blob_url;
+            temp_link.download = `${state_dict['job_id']}.zip`;
+            document.body.appendChild(temp_link);
+            temp_link.click();
+            document.body.removeChild(temp_link);
+            URL.revokeObjectURL(blob_url);
+          })
+          .catch(err => {
+            document.getElementById(`${dialog_id}_body`).textContent =
+              `Download failed: ${err.message}`;
+          });
+      };
+      bootstrap.Modal.getOrCreateInstance(document.getElementById(dialog_id)).show();
+    });
+  }
+}
+
+
+// Wake word 「嘿，小研」 (WakeWord plugin, docs/superpowers/specs/2026-09-30-wake-word-design.md).
+// State arrives on output 3; the button and the wake key send {'wake': {}}. Hooks are registered in
+// addPlugin() so the key works even while the node's widget is closed (and for nodes added live).
+const WAKE_WORD_STATE_LABELS = {
+  sleeping: '💤 Say "Hey, Xiao Yan" to wake me', greeting: '👋 Greeting', listening: '🎙 Listening',
+  thinking: '💭 Thinking', speaking: '🔊 Answering'};
+const WAKE_WORD_DECISION_LABELS = {wake: 'Wake', question: 'Question', ignored: 'Ignored', echo: 'Echo, filtered out'};
+var wakeWordStates = {};      // plugin name -> last state dict (+ listenDeadline, ms)
+var wakeWordKeys = {};        // plugin name -> KeyboardEvent.key that wakes it
+var wakeWordKeyHandlerInstalled = false;
+var wakeWordCountdownTimer = null;
+
+function addWakeWordHooks(name, wakeKey) {
+  wakeWordKeys[name] = wakeKey || 'PageDown';
+  if( !(name in outputListeners && 3 in outputListeners[name]) ) {
+    addOutputListener(name, 3, function(state) {
+      if( state['state'] === 'listening' && state['remaining'] != null )
+        state['listenDeadline'] = Date.now() + state['remaining'] * 1000;
+      wakeWordStates[name] = state;
+      renderWakeWordWidget(name);
+    });
+  }
+  if( !wakeWordKeyHandlerInstalled ) {
+    wakeWordKeyHandlerInstalled = true;
+    document.addEventListener('keydown', function(e) {
+      const t = e.target;
+      if( t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) )
+        return;   // typing (e.g. in the chat box) must not wake it
+      for( const [pluginName, key] of Object.entries(wakeWordKeys) ) {
+        if( e.key === key ) {
+          e.preventDefault();
+          sendWebsocket({[pluginName]: {'wake': {}}});
+        }
+      }
+    });
+  }
+  if( !wakeWordCountdownTimer )
+    wakeWordCountdownTimer = setInterval(function() {
+      for( const n of Object.keys(wakeWordStates) )
+        if( wakeWordStates[n]['state'] === 'listening' ) renderWakeWordWidget(n);
+    }, 250);
+}
+
+function addWakeWordWidget(name, id, title, grid_options) {
+  const html = `
+    <div class="wake-word-widget">
+      <div id="${id}_state" class="wake-word-state"></div>
+      <button id="${id}_wake" type="button" class="btn btn-primary wake-word-button">🎙 Wake Xiao Yan</button>
+      <div id="${id}_last" class="wake-word-last"></div>
+    </div>
+  `;
+  const widget = addGridWidget(id, title, html, null, Object.assign({w: 3, h: 4}, grid_options));
+  const button = document.getElementById(`${id}_wake`);
+  button.addEventListener('click', function() { sendWebsocket({[name]: {'wake': {}}}); });
+  button.addEventListener('mousedown', e => e.stopPropagation());    // not a GridStack drag
+  button.addEventListener('pointerdown', e => e.stopPropagation());
+  renderWakeWordWidget(name);
+  return widget;
+}
+
+function renderWakeWordWidget(name) {
+  const stateEl = document.getElementById(`${name}_grid_state`);
+  if( !stateEl ) return;
+  const s = wakeWordStates[name] || {state: 'sleeping'};
+  let label = WAKE_WORD_STATE_LABELS[s['state']] || s['state'];
+  if( s['state'] === 'listening' && s['listenDeadline'] )
+    label += ` ${Math.max(0, Math.ceil((s['listenDeadline'] - Date.now()) / 1000))}s`;
+  stateEl.textContent = label;
+  stateEl.className = `wake-word-state wake-word-${s['state']}`;
+  const lastEl = document.getElementById(`${name}_grid_last`);
+  if( lastEl )
+    lastEl.textContent = s['text']
+      ? `${WAKE_WORD_DECISION_LABELS[s['decision']] || s['decision']}: ${s['text']}` : '';
+}
+
+function addHubDialog(name, title) {
+  // harness Tools_Hub / Skills_Hub: enable checkboxes only (state on output 0).
+  const dialog_id = `${name}_config_dialog`;
+  const list_id = `${dialog_id}_list`;
+  if (document.getElementById(dialog_id) == null) {
+    addDialog(dialog_id, title, `<div id="${list_id}" class="p-2" style="max-height: 60vh; overflow-y: scroll;"></div>`, false);
+    $(`#${dialog_id}`).on('show.bs.modal', function() {
+      sendWebsocket({[name]: {'refresh': {}}});
+    });
+  }
+  if (!(name in outputListeners)) {
+    addOutputListener(name, 0, function(state) {
+      const list = document.getElementById(list_id);
+      list.innerHTML = state.map(item => `
+        <div class="form-check mb-2">
+          <input type="checkbox" class="form-check-input" id="${dialog_id}_${item.name}_enabled" ${item.enabled ? 'checked' : ''}>
+          <label class="form-check-label" for="${dialog_id}_${item.name}_enabled">
+            <strong>${escapeHTML(item.name)}</strong>${item.risk ? ` (risk: ${escapeHTML(item.risk)})` : ''}
+          </label>
+          <div><small>${escapeHTML(item.description)}</small></div>
+        </div>`).join('');
+      state.forEach(item => {
+        $(`#${dialog_id}_${item.name}_enabled`).on('change', function() {
+          sendWebsocket({[name]: {'set_enabled': {'name': item.name, 'enabled': this.checked}}});
+        });
+      });
+    });
+  }
 }
 
 
@@ -802,12 +1222,66 @@ function addWebVideoInWidget(name, id, title, grid_options) {
         </video>
         <div id="${status_id}" style="display:flex; align-items:center; justify-content:center;
           width:100%; height:100%; color:#666; font-size:13px; position:absolute; top:0; left:0;">
-          等待攝影機權限…
+          Waiting for camera permission…
         </div>
       </div>
     </div>
   `;
   return addGridWidget(id, title, html, null, Object.assign({ w: 4, h: 4 }, grid_options));
+}
+
+function addImageInputWidget(name, id, title, grid_options) {
+  const file_id = `${id}_file`;
+  const preview_id = `${id}_preview`;
+  const status_id = `${id}_status`;
+  const html = `
+    <div style="display:flex; flex-direction:column; flex:1; min-height:0; gap:6px;">
+      <div style="flex-shrink:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <input id="${file_id}" type="file" accept="image/*" style="font-size:13px;">
+        <button id="${id}_clear_btn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" style="font-size:13px;">Clear</button>
+      </div>
+      <div style="flex:1; min-height:0; position:relative; background:#111; border-radius:6px; overflow:hidden;">
+        <img id="${preview_id}" style="display:none; width:100%; height:100%; object-fit:contain; position:absolute; top:0; left:0;">
+        <div id="${status_id}" style="display:flex; align-items:center; justify-content:center;
+          width:100%; height:100%; color:#666; font-size:13px; position:absolute; top:0; left:0;">
+          No image loaded
+        </div>
+      </div>
+    </div>
+  `;
+
+  const widget = addGridWidget(id, title, html, null, Object.assign({ w: 4, h: 4 }, grid_options));
+
+  document.getElementById(file_id).addEventListener('change', (ev) => {
+    if (!ev.target.files || ev.target.files.length === 0)
+      return;
+
+    const file = ev.target.files[0];
+    const ext = file.name.split('.').pop().toLowerCase();
+    file.arrayBuffer().then((fileBuffer) => {
+      sendWebsocket(fileBuffer, type=MESSAGE_IMAGE, metadata=ext);
+    });
+
+    const preview = document.getElementById(preview_id);
+    const status = document.getElementById(status_id);
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+    status.style.display = 'none';
+  });
+
+  document.getElementById(`${id}_clear_btn`).addEventListener('click', () => {
+    const msg = {};
+    msg[name] = { 'clear_image': null };
+    sendWebsocket(msg);
+
+    const preview = document.getElementById(preview_id);
+    const status = document.getElementById(status_id);
+    preview.style.display = 'none';
+    status.style.display = 'flex';
+    document.getElementById(file_id).value = '';
+  });
+
+  return widget;
 }
 
 window.MJPEG_STREAMS = window.MJPEG_STREAMS || {};
@@ -838,11 +1312,9 @@ function addVideoOutputWidget(name, id, title, grid_options) {
       <div style="flex-shrink:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
         <label for="${select_id}" style="margin:0; font-size:13px;">Stream:</label>
         <select id="${select_id}" style="font-size:13px;">
-          <option value="websocket">WebSocket (WebRTC)</option>
           <option value="mjpeg" selected>WebSocket JPEG</option>
         </select>
         <button id="${id}_stop_btn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" style="font-size:13px;">Stop</button>
-        <a id="${id}_webrtc_cert" href="#" target="_blank" style="font-size:12px; color:#fa0; font-weight:bold; display:none; border:1px solid #fa0; border-radius:4px; padding:2px 6px;" title="Click to open WebRTC server in a new tab and accept the self-signed SSL certificate, then return here.">⚠ Accept WebRTC Cert</a>
       </div>
       <div id="${id}_media_container" style="flex:1; min-height:0; position:relative; background:#111; border-radius:6px; overflow:hidden; contain:layout paint;">
         <video id="${video_id}" autoplay controls playsinline muted
@@ -868,20 +1340,13 @@ function addVideoOutputWidget(name, id, title, grid_options) {
   let streamSelect = document.getElementById(select_id);
   let errorDiv = document.getElementById(error_id);
   let statusDiv = document.getElementById(`${id}_status`);
-  let webrtcCertLink = document.getElementById(`${id}_webrtc_cert`);
+  sensorSignalRegister(name, document.getElementById(`${id}_media_container`));   // sensor_view.js
 
   function setStatus(msg, color) {
     if (!statusDiv) return;
     statusDiv.textContent = msg;
     statusDiv.style.color = color || '#666';
     statusDiv.style.display = (msg && msg.length > 0) ? 'flex' : 'none';
-  }
-
-  let streamName = "output";
-  let webrtc_match = name.match(/_(\d+)$/);
-
-  if (webrtc_match) {
-    streamName += "_" + webrtc_match[1];
   }
 
   // Check network connectivity by testing Google
@@ -912,146 +1377,10 @@ function addVideoOutputWidget(name, id, title, grid_options) {
     console.error(message);
   }
 
-  // WebRTC stream via WebSocket signaling on port 8554.
-  // If WebRTC fails (no encoder / ICE failure), auto-fallback to WS JPEG via port 49000.
-  function playWebSocketStream() {
-    console.log('[VideoOutput] playWebSocketStream() called');
-    mjpegImg.onload = null;
-    mjpegImg.onerror = null;
-    mjpegImg.src = '';
-    mjpegImg.style.display = 'none';
-
-    const wsUrl = getWebsocketURL(streamName);
-    if (typeof connections !== 'undefined' && connections[wsUrl]) {
-      try {
-        if (connections[wsUrl].webrtcPeer) connections[wsUrl].webrtcPeer.close();
-        if (connections[wsUrl].websocket)  connections[wsUrl].websocket.close();
-        delete connections[wsUrl];
-      } catch(e) {}
-    }
-    video.style.display = 'none';
-    errorDiv.textContent = '';
-    setStatus('Connecting to WebRTC...', '#aaa');
-
-    const certUrl = `https://${host}:8554`;
-    if (webrtcCertLink) {
-      webrtcCertLink.href = certUrl;
-      webrtcCertLink.style.display = 'none';  // only show on cert error
-    }
-
-    // Auto-fallback: if WebRTC has not produced a frame within 4 seconds,
-    // switch to WS JPEG (uses the WS JPEG infrastructure added to server.py).
-    let webrtcSucceeded = false;
-    const fallbackTimer = setTimeout(() => {
-      if (streamSelect.value !== 'websocket' || webrtcSucceeded) return;
-      console.warn('[VideoOutput] WebRTC timeout — falling back to WS JPEG');
-      showError('WebRTC timed out. Falling back to WebSocket JPEG stream.');
-      playWsJpegFallback();
-    }, 4000);
-
-    try {
-      playStream(wsUrl, video);
-
-      const ws = connections[wsUrl] && connections[wsUrl].websocket;
-      if (ws) {
-        ws.addEventListener('open', () => {
-          setStatus('WebRTC signaling connected — waiting for ICE...', '#4a4');
-
-          const stateMonitor = setInterval(() => {
-            if (streamSelect.value !== 'websocket') { clearInterval(stateMonitor); return; }
-            const conn = connections[wsUrl];
-            if (!conn || !conn.webrtcPeer) return;
-            const connState = conn.webrtcPeer.connectionState;
-            const iceState  = conn.webrtcPeer.iceConnectionState;
-            console.log(`[WebRTC] conn=${connState} ice=${iceState} video.readyState=${video.readyState}`);
-            if (connState === 'connected') {
-              clearInterval(stateMonitor);
-              if (video.readyState < 2) setStatus('WebRTC connected — waiting for first frame...', '#4a4');
-            } else if (connState === 'failed' || iceState === 'failed' || iceState === 'disconnected') {
-              clearInterval(stateMonitor);
-              clearTimeout(fallbackTimer);
-              setStatus('', '');
-              showError(`WebRTC ICE failed. Falling back to WS JPEG...`);
-              playWsJpegFallback();
-            }
-          }, 500);
-        });
-        ws.addEventListener('error', () => {
-          clearTimeout(fallbackTimer);
-          setTimeout(() => {
-            if (streamSelect.value === 'websocket' && !webrtcSucceeded) {
-              if (webrtcCertLink) webrtcCertLink.style.display = 'inline';
-              setStatus('', '');
-              showError(`WebRTC cert not trusted on port 8554. Click "⚠ Accept WebRTC Cert" above then reload. Using JPEG fallback...`);
-              playWsJpegFallback();
-            }
-          }, 1500);
-        });
-        ws.addEventListener('close', () => {
-          if (streamSelect.value === 'websocket' && video.readyState < 2 && !webrtcSucceeded) {
-            clearTimeout(fallbackTimer);
-            if (webrtcCertLink) webrtcCertLink.style.display = 'inline';
-            showError('WebRTC unavailable. Click "⚠ Accept WebRTC Cert" above for H264 video. Using JPEG fallback...');
-            playWsJpegFallback();
-          }
-        });
-      }
-
-      video.onloadedmetadata = () => {
-        if (streamSelect.value !== 'websocket') return;
-        video.style.display = 'block';
-        setStatus('', '');
-        errorDiv.textContent = '';
-      };
-      video.onplaying = () => {
-        if (streamSelect.value !== 'websocket') return;
-        webrtcSucceeded = true;
-        clearTimeout(fallbackTimer);
-        video.style.display = 'block';
-        setStatus('', '');
-        errorDiv.textContent = '';
-        streamSelect.style.borderColor = '#4a4';
-        streamSelect.title = 'Active: WebRTC H264';
-      };
-      video.onerror = () => {
-        if (streamSelect.value === 'websocket' && !webrtcSucceeded) {
-          clearTimeout(fallbackTimer);
-          showError('WebRTC stream error. Falling back to WS JPEG...');
-          playWsJpegFallback();
-        }
-      };
-    } catch (e) {
-      clearTimeout(fallbackTimer);
-      showError(`WebRTC error: ${e.message}. Falling back to WS JPEG...`);
-      playWsJpegFallback();
-    }
-  }
-
   // WS JPEG: receives MESSAGE_VIDEO_FRAME binary messages from server.py
   // at ~20fps and displays them via mjpegImg. Avoids HTTP mixed-content issues.
-  // Called both as auto-fallback from WebRTC failure and when user manually
-  // selects "WebSocket JPEG" from the dropdown (manual=true).
-  function playWsJpegFallback(manual) {
-    if (streamSelect.value !== 'websocket' && streamSelect.value !== 'mjpeg') return;
-
-    // When manually selected: tear down any running WebRTC connection first
-    if (manual) {
-      const wsUrl = getWebsocketURL(streamName);
-      if (typeof connections !== 'undefined' && connections[wsUrl]) {
-        try {
-          if (connections[wsUrl].webrtcPeer) connections[wsUrl].webrtcPeer.close();
-          if (connections[wsUrl].websocket)  connections[wsUrl].websocket.close();
-          delete connections[wsUrl];
-        } catch(e) {}
-      }
-      video.onloadedmetadata = null;
-      video.onplaying = null;
-      video.onerror = null;
-      if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
-      if (webrtcCertLink) webrtcCertLink.style.display = 'none';
-      errorDiv.textContent = '';
-    }
-
+  function playWsJpeg() {
+    errorDiv.textContent = '';
     video.style.display = 'none';
     mjpegImg.onload = null;
     mjpegImg.onerror = null;
@@ -1060,7 +1389,6 @@ function addVideoOutputWidget(name, id, title, grid_options) {
 
     let prevObjUrl = null;
     videoFrameListeners[name] = function(frameData) {
-      if (streamSelect.value !== 'websocket' && streamSelect.value !== 'mjpeg') return;
       if (prevObjUrl) { URL.revokeObjectURL(prevObjUrl); prevObjUrl = null; }
       prevObjUrl = URL.createObjectURL(new Blob([frameData], {type: 'image/jpeg'}));
       mjpegImg.src = prevObjUrl;
@@ -1068,69 +1396,9 @@ function addVideoOutputWidget(name, id, title, grid_options) {
       setStatus('', '');
       errorDiv.textContent = '';
       streamSelect.style.borderColor = '#88a';
-      streamSelect.title = manual ? 'Active: WebSocket JPEG' : 'Active: WebSocket JPEG (fallback — WebRTC unavailable)';
+      streamSelect.title = 'Active: WebSocket JPEG';
     };
-  }
-
-  function playMJPEGStream() {
-    // Stop WS JPEG listener so frames are no longer routed here
-    if (videoFrameListeners[name]) {
-      delete videoFrameListeners[name];
-    }
-
-    // Cleanly shut down any stale WebRTC connection
-    const wsUrl = getWebsocketURL(streamName);
-    if (typeof connections !== 'undefined' && connections[wsUrl]) {
-      try {
-        if (connections[wsUrl].webrtcPeer) connections[wsUrl].webrtcPeer.close();
-        if (connections[wsUrl].websocket)  connections[wsUrl].websocket.close();
-        delete connections[wsUrl];
-      } catch(e) {}
-    }
-    video.onloadedmetadata = null;
-    video.onplaying = null;
-    video.onerror = null;
-    if (video.srcObject) {
-      video.srcObject.getTracks().forEach(t => t.stop());
-      video.srcObject = null;
-    }
-    video.style.display = 'none';
-    errorDiv.textContent = '';
-    streamSelect.style.borderColor = '';
-    streamSelect.title = '';
-    if (webrtcCertLink) webrtcCertLink.style.display = 'none';
-    setStatus('Connecting to MJPEG...', '#aaa');
-
-    const baseUrl = `http://${host}:${port}`;
-    const mjpegUrlWithTimestamp = `${baseUrl}/mjpeg_feed?t=${new Date().getTime()}`;
-
-    window.MJPEG_STREAMS[name] = { img: mjpegImg, url: mjpegUrlWithTimestamp };
-    mjpegImg.src = '';
-    mjpegImg.src = mjpegUrlWithTimestamp;
-
-    let mjpegRetries = 0;
-    let mjpegRetryTimer = null;
-
-    mjpegImg.onload = () => {
-      mjpegImg.style.display = 'block';
-      setStatus('', '');
-      streamSelect.style.borderColor = '#44a';
-      streamSelect.title = 'Active: MJPEG (HTTP)';
-      mjpegRetries = 0;
-      if (mjpegRetryTimer) { clearTimeout(mjpegRetryTimer); mjpegRetryTimer = null; }
-    };
-    mjpegImg.onerror = () => {
-      if (streamSelect.value !== 'mjpeg') return;
-      mjpegImg.style.display = 'none';
-      mjpegRetries++;
-      const delay = mjpegRetries <= 3 ? 1500 : 3000;
-      setStatus(`MJPEG connecting... (${mjpegRetries})`, '#aaa');
-      mjpegRetryTimer = setTimeout(() => {
-        if (streamSelect.value !== 'mjpeg') return;
-        mjpegImg.src = '';
-        mjpegImg.src = `http://${host}:${port}/mjpeg_feed?t=${new Date().getTime()}`;
-      }, delay);
-    };
+    setVideoSubscription(Object.keys(videoFrameListeners));   // websocket.js: only the outputs shown here
   }
 
   // Listen for Python to report the actual MJPEG port via plugin parameter 'mjpeg_port'
@@ -1140,7 +1408,6 @@ function addVideoOutputWidget(name, id, title, grid_options) {
       if (newPort !== port) {
         port = newPort;
         console.log(`VideoOutput: received actual MJPEG port ${port} from server`);
-        if (streamSelect.value === 'mjpeg') playMJPEGStream();
       }
     }
   });
@@ -1149,21 +1416,10 @@ function addVideoOutputWidget(name, id, title, grid_options) {
   // GridStack v10 uses pointer events (pointerdown) for drag detection.
   // Block both mousedown and pointerdown so neither event reaches GridStack
   // when the user clicks on interactive controls inside the widget.
-  [streamSelect, stopBtn, webrtcCertLink].forEach(el => {
+  [streamSelect, stopBtn].forEach(el => {
     if (el) {
       el.addEventListener('mousedown',  e => e.stopPropagation());
       el.addEventListener('pointerdown', e => e.stopPropagation());
-    }
-  });
-
-  // Select Switch Stream from the drop-down menu
-  streamSelect.addEventListener('change', function (event) {
-    event.stopPropagation();  // also prevent GridStack's change handler from receiving this
-    console.log(`Switching to stream: ${streamSelect.value}`);
-    if (streamSelect.value === 'websocket') {
-      playWebSocketStream();
-    } else if (streamSelect.value === 'mjpeg') {
-      playWsJpegFallback(true);  // manual: bypass WebRTC, use WS JPEG directly
     }
   });
 
@@ -1181,41 +1437,16 @@ function addVideoOutputWidget(name, id, title, grid_options) {
       }
   });
 
-  // Default to WebSocket: tries WebRTC first, auto-falls-back to WS JPEG (low-latency push stream)
-  // when WebRTC encoder is unavailable (e.g. SM110/JetPack7).  WS JPEG latency is ~5-20ms,
-  // matching original WebRTC behavior so Insert frame sync works without any delay compensation.
-  streamSelect.value = 'websocket';
-  playWebSocketStream();
+  // WS JPEG is the only stream (low-latency push, ~5-20ms, so Insert frame sync needs no delay
+  // compensation). The WebRTC option was removed 2026-09-29: ICE never completed on this setup,
+  // every widget signalled to port 8554 (the first VideoOutput), and that half-open peer wedged
+  // jetson-utils' WebRTC server, which then leaked every raw frame (61 GB before a restart).
+  // VideoOutput no longer starts that server at all (see video_output.py).
+  playWsJpeg();
 
   return widget;
 }
 
-function addOutputListener(name, channel, listener) {
-  if( ! (name in outputListeners) ) {
-    outputListeners[name] = [listener];
-    msg = {};
-    msg[name] = {'send_client_output': channel};
-    sendWebsocket(msg);
-  }
-  else
-    outputListeners[name].push(listener);
-}
-
-function sendOutput(output) {
-  const plugin_name = output['name'];
-  if( plugin_name in outputListeners )
-    outputListeners[plugin_name].forEach((listener) => {listener(output['data'])});
-}
-
-function addStateListener(name, listener) {
-  if( name == undefined )
-    name = 'all';
-    
-  if( ! (name in stateListeners) )
-    stateListeners[name] = [listener];
-  else
-    stateListeners[name].push(listener);
-}
 
 function setStateDict(state_dicts) {
   for( plugin_name in state_dicts ) {
@@ -1224,6 +1455,13 @@ function setStateDict(state_dicts) {
       const id = document.getElementById(`${plugin_name}_config_${state_name}`);
       if( id != null ) {
         id.value = state_dict[state_name];
+        // A <select> with options (addPluginDialog's dropdown fields) gets replaced
+        // by a select2 widget - setting the native element's .value directly (as
+        // above) doesn't repaint select2's own rendered UI, so without this the
+        // dropdown keeps showing whatever was selected when the dialog was first
+        // built even after this sync writes the live value underneath it.
+        if( id.tagName === 'SELECT' && $(id).hasClass('select2-hidden-accessible') )
+          $(id).trigger('change.select2');
       }
     }
     
@@ -1241,8 +1479,12 @@ function setStats(stats_dicts) {
   for( plugin_name in stats_dicts ) {
     const stats = stats_dicts[plugin_name];
 
+    if( stats && stats['source'] )   // the node feeding a VideoOutput (track_boxes.js)
+      trackBoxesSetSource(plugin_name, stats['source']);
+
     if( ! ('summary' in stats) )
       continue;
+
 
     let summary = stats['summary'];
 
@@ -1258,8 +1500,17 @@ function setStats(stats_dicts) {
 
     let node_stats = document.getElementById(`${plugin_name}_node_stats`);
 
-    if( node_stats != undefined )
-      node_stats.textContent = summary;
+    if( node_stats != undefined ) {
+      // one line per item, cut with an ellipsis at the node's width (a long notice ran out of the
+      // 160 px node, 2026-11-09); hovering shows the whole text
+      node_stats.replaceChildren(...String(summary).split('\n').map(function(line) {
+        const el = document.createElement('div');
+        el.className = 'node-stats-line';
+        el.textContent = line;
+        return el;
+      }));
+      node_stats.title = summary;
+    }
   }
 }
 
@@ -1283,7 +1534,7 @@ function addPlugin(plugin) {
   } catch(e) {}
 
   const plugin_title = plugin['title'];
-  const layout_grid = plugin['layout_grid'];
+  const layout_grid = pickLayout(plugin, viewMode);   // sensor_view.js: this view's own, else layout_grid
   const layout_node = plugin['layout_node'];
   const nodes = document.querySelectorAll('.drawflow-node');
 
@@ -1343,45 +1594,156 @@ function addPlugin(plugin) {
     //console.log(`double-click ${plugin_name}`);
     if( addPluginGridWidget(plugin_name, plugin['type'], plugin_title) == null ) {
       if( has_config_dialog ) {
+        // get_state_dict's response lands asynchronously and setStateDict() (above)
+        // writes it straight into these same form fields to keep the dialog's
+        // display in sync with values changed elsewhere. Showing the modal
+        // immediately (the old behavior) let that write land AFTER the operator
+        // had already picked a new value but BEFORE they hit submit, silently
+        // reverting their pick back to the pre-edit value - a config change that
+        // visually appeared to work but never actually took effect. Wait for one
+        // response before showing the modal so there's nothing left to race.
+        const name = plugin['name'];
+        const listeners = stateListeners[name] || (stateListeners[name] = []);
+        const showOnce = function(_state_dict) {
+          const idx = listeners.indexOf(showOnce);
+          if( idx !== -1 )
+            listeners.splice(idx, 1);
+          const config_modal = new bootstrap.Modal(`#${name}_config_dialog`);
+          config_modal.show();
+        };
+        listeners.push(showOnce);
         sendWebsocket({'get_state_dict': plugin_name});
-        const config_modal = new bootstrap.Modal(`#${plugin['name']}_config_dialog`);
-        config_modal.show();
       }
     }
   });
   
-  if( has_config_dialog )
-    addPluginDialog(plugin_name, 'config', plugin_title, null, plugin['parameters']);
-    
-  if( Object.keys(layout_grid).length > 0 ) {
+  if( has_config_dialog ) {
+    // Tools_Hub/Skills_Hub's enabled_tools is hidden=True - a machine-managed dict, not a
+    // user-editable form field - so the generic auto-form builder would render an empty dialog. Build custom content under the same
+    // "#<name>_config_dialog" id instead, so the existing double-click opener above
+    // still finds and shows it without any changes to that shared logic.
+    if( plugin['type'] === 'Tools_Hub' || plugin['type'] === 'Skills_Hub' )
+      addHubDialog(plugin_name, plugin_title);
+    else
+      addPluginDialog(plugin_name, 'config', plugin_title, null, plugin['parameters']);
+  }
+
+  // SafetyReview's confirm dialog is a functional requirement (a gated tool call
+  // blocks waiting for it), not an optional display panel - it must be wired up
+  // unconditionally whenever this plugin exists on the graph, regardless of
+  // whether it was loaded from a preset with a saved layout_grid or added fresh
+  // via the UI (which always starts with an empty layout_grid). Do NOT gate this
+  // behind addPluginGridWidget()'s layout_grid/double-click-only dispatch below -
+  // that path is for optional display widgets, and a plugin added live through
+  // the graph editor would silently never get a confirm dialog subscribed.
+  // Dual-screen exhibition display (2026-09-19): the camera-only kiosk screen is a
+  // passive display for booth visitors - a tool-call confirmation dialog popping up
+  // there would have no one to answer it. Only skip registering it in that one view;
+  // ?view=pipeline and the everyday no-param URL keep it exactly as today.
+  if( plugin['type'] === 'SafetyReview' && viewMode !== 'sensor' )
+    addSafetyReviewWidget(plugin_name, 0, true);
+
+  // WakeWord: the state listener and the wake key must work whether or not its grid widget is
+  // open and for nodes added live (same reasoning as the SafetyReview hook above). The camera-only
+  // kiosk view has no one to press anything.
+  if( plugin['type'] === 'WakeWord' && viewMode !== 'sensor' )
+    addWakeWordHooks(plugin_name, plugin['wake_key']);
+  if( plugin['type'] === 'PerformanceMonitor' && viewMode !== 'sensor' )
+    addPerformanceMonitorHooks(plugin_name);   // perf_monitor.js
+  if( plugin['type'] === 'EventLog' && viewMode !== 'sensor' )
+    addEventLogHooks(plugin_name);             // event_log.js
+  if( plugin['type'] === 'Tools_Hub' && viewMode !== 'sensor' )
+    addObjectTrackerHooks(plugin_name);   // object_tracker.js: the tracking tool module's panel
+  if( plugin['type'] === 'Tools_Hub' )
+    addTrackBoxesHooks(plugin_name);      // track_boxes.js: boxes over the camera views, camera view too
+
+  // Same reasoning as SafetyReview's confirm dialog above - a dataset finishing
+  // in the background must notify the operator regardless of whether this
+  // node's grid widget happens to be open, and regardless of whether the node
+  // was preset-loaded or added live via the graph editor. DatasetLoader gets the
+  // same modal (keyed to its own name, so it's a separate dialog instance) because
+  // it now broadcasts its own {'ready': false, 'error': ...} state on a nonexistent/
+  // unreadable upload folder or zero images after extension filtering - the same
+  // silent-dead-end problem the DatasetCollector modal exists to close for
+  // packaging failures.
+  // Same reasoning as the SafetyReview gate above.
+  if( (plugin['type'] === 'DatasetCollector' || plugin['type'] === 'DatasetLoader') && viewMode !== 'sensor' )
+    addDatasetCollectorReadyModal(plugin_name);
+
+  // Camera access is gated on "does a WebVideoIn plugin exist on the graph" (see
+  // audio.js setWebVideoInCount()/updateRemoteCameraState()), which must react the
+  // same way whether this plugin arrived via a preset load or was dragged in live -
+  // so this is registered unconditionally here, not inside the layout_grid-gated
+  // addPluginGridWidget() call below (same reasoning as the SafetyReview hook above).
+  // The preview widget itself is also created unconditionally for the same reason:
+  // a WebVideoIn added live via the UI always starts with an empty layout_grid, and
+  // without this it would silently have no visible panel until the user happens to
+  // double-click the node - even though the camera stream itself would already be live.
+  if( plugin['type'] === 'WebVideoIn' ) {
+    webVideoInPlugins.add(plugin_name);
+    if( typeof setWebVideoInCount === 'function' )
+      setWebVideoInCount(webVideoInPlugins.size);
+  }
+
+  if( plugin['type'] === 'WebVideoIn' || Object.keys(layout_grid).length > 0 ) {
     addPluginGridWidget(plugin_name, plugin['type'], plugin_title, layout_grid);
   }
 
-  // Check if plugin_name includes the following name.
-  if (plugin_name.includes('AutoPrompt_ICL') || plugin_name.includes('NanoLLM_ICL')
-      || plugin_name.includes('NanoDB_Fashion') || plugin_name.includes('OwlVit_detector')
-      || plugin_name.includes('OpenWord_detector') || plugin_name.includes('OpenWord_FineTune')
-      || plugin_name.includes('One_Step_Alert') || plugin_name.includes('Two_Steps_Alert')
-      || plugin_name.includes('Save_Pics') || plugin_name.includes("MQTT_Publisher")
-      || plugin_name.includes('vLLM') || plugin_name.includes('WebVideoIn')
-      || plugin_name.includes('RecDetRes')) {
-    // Call customizeNode to adjust the appearance of the small node and big node color
+  // The Advantech badge, by plugin type (DynamicPlugin's ADVANTECH_TYPES, sent as TypeInfo 'vendor',
+  // 2026-11-08): it used to match node names, so a renamed node lost it and newer plugins had none.
+  const typeInfo = pluginTypes && pluginTypes[plugin['type']];
+  if (typeInfo && typeInfo['vendor'] === 'advantech') {
     customizeNode(plugin_name, color = '#add8e6', label = 'Advantech', labelWidth = '80px', labelHeight = '25px', fontSize = '12px');
   }
 }
 
 function addPluginGridWidget(name, type, title, grid_options) {
   const id = `${name}_grid`;
-  
+
   if( type == undefined )
     type = name;
-  
+
   if( title == undefined )
     title = name;
-      
+
   if( document.getElementById(id) != null )
     return null;
-    
+
+  // Dual-screen exhibition display (2026-09-19) follow-up fix: GraphEditor is a
+  // functional component, not a display widget that camera view can filter out
+  // like any other non-video type - addGraphEditor() is the ONLY place `drawflow`
+  // (the node-graph engine every addPlugin() call depends on via
+  // drawflow.addNode()/getNodesFromName()) ever gets constructed. Filtering it
+  // out here the same way as other non-video types left `drawflow` permanently
+  // undefined in camera view, so every subsequent plugin's addPlugin() call threw
+  // an uncaught TypeError and aborted the whole batch - ?view=camera rendered
+  // nothing but the navbar, on every preset (all of them wire a GraphEditor
+  // global).
+  //
+  // 2026-09-22 revision: the original fix here built the GridStack widget as
+  // normal and then immediately removed it again in camera view. That still
+  // briefly inserted a widget at GraphEditor's saved position (which overlaps
+  // the region the camera video widgets live in) into GridStack's layout
+  // engine - the insert itself, not just the later removal, is what triggers
+  // GridStack's collision avoidance, which permanently displaces whatever real
+  // widget was already occupying that space. Removing GraphEditor's widget
+  // right after does not undo that displacement. Root-caused live by noticing
+  // the camera view's video widgets "fell" every time the pipeline-view page
+  // reloaded (each reload rebroadcasts the full plugin list to every
+  // connected client, re-running this same insert-then-remove dance). Fix:
+  // addGraphEditor() now builds the drawflow engine directly in camera view,
+  // entirely outside GridStack, so no widget for it is ever inserted at all.
+  if( type === 'GraphEditor' )
+    return addGraphEditor(name, id, grid_options);
+
+  // Dual-screen exhibition display (2026-09-19): ?view=camera only shows widgets
+  // that render a live picture; ?view=pipeline shows everything else. No 'view'
+  // param (viewMode === null) shows everything, exactly like today.
+  if( viewMode === 'sensor' && !isSensorWidget(type) )
+    return null;
+  if( viewMode === 'pipeline' && isSensorWidget(type) )
+    return null;
+
   switch(type) {
     case 'UserPrompt':
       return addTextInputWidget(name, id, title, grid_options);
@@ -1392,19 +1754,30 @@ function addPluginGridWidget(name, type, title, grid_options) {
     case 'NanoLLM_ICL':
       return addChatWidget_no_input(name, id, title, grid_options);
     case 'vLLM':
-      return addChatWidget_no_input_vllm(name, id, title, grid_options);
+    case 'AgentLoop':
+      return addChatWidget_no_input_history3(name, id, title, grid_options, type);
+    case 'WakeWord':
+      return addWakeWordWidget(name, id, title, grid_options);
+    case 'PerformanceMonitor':
+      return addPerformanceMonitorWidget(name, id, title, grid_options);
+    case 'EventLog':
+      return addEventLogWidget(name, id, title, grid_options);
     case 'VideoOutput':
       return addVideoOutputWidget(name, id, title, grid_options);
     case 'WebVideoIn':
       return addWebVideoInWidget(name, id, title, grid_options);
+    case 'Image_Input':
+      return addImageInputWidget(name, id, title, grid_options);
     case 'NanoDB':
       return addNanoDBWidget(name, id, title, grid_options);
     case 'NanoDB_Fashion':
       return addNanoDBWidget(name, id, title, grid_options);
     case 'TerminalPlugin':
       return addTerminalWidget(name, id, title, grid_options);
-    case 'GraphEditor':
-      return addGraphEditor(name, id, title, grid_options);
+    case 'DatasetCollector':
+      return addDatasetCollectorControlWidget(name, id, title, grid_options);
+    case 'DatasetLoader':
+      return addDatasetLoaderWidget(name, id, title, grid_options);
     default:
       return null;
   }
@@ -1441,6 +1814,12 @@ function removePlugins(plugins) {
   ignoreGraphEvents = true;
 
   plugins.forEach((plugin) => {
+    if( webVideoInPlugins.has(plugin) ) {
+      webVideoInPlugins.delete(plugin);
+      if( typeof setWebVideoInCount === 'function' )
+        setWebVideoInCount(webVideoInPlugins.size);
+    }
+
     // remove drawflow node
     try {
       const id = drawflow.getNodesFromName(plugin)[0];
@@ -1463,6 +1842,7 @@ function removePlugins(plugins) {
     delete stateListeners[plugin];
     delete videoFrameListeners[plugin];
   });
+  setVideoSubscription(Object.keys(videoFrameListeners));
 
   ignoreGraphEvents = false;
 }
@@ -1476,7 +1856,7 @@ function addPlugins(plugins) {
   for( i in plugins ) {
     let plugin = plugins[i];
     if( ('global' in plugin) ) {
-      const lg = plugin['layout_grid'];
+      const lg = pickLayout(plugin, viewMode);
       // Only create widget for global plugins that have actual position data.
       // Empty layout_grid {} means a stale preset entry — skip to avoid ghost widgets.
       if( lg && Object.keys(lg).length > 0 )
@@ -1550,9 +1930,49 @@ function addModules(modules) {
       const plugin = moduleTypes[moduleName][pluginName];
       console.log('addModules', pluginName, plugin);
       if( 'init' in plugin && Object.keys(plugin['init']['parameters']).length > 0 ) {
+        // every new client makes the server resend modules: rebuilding a dialog that is open
+        // would delete it under the user's hands (camera-picker §4.4)
+        if( document.querySelector(`#${pluginName}_init_dialog.show`) )
+          continue;
         addPluginDialog(pluginName, 'init', null, plugin['init']['description'], plugin['init']['parameters']);
       }
     }
+  }
+}
+
+// After an add dialog of a plugin with live_type_hints opens: read its options again (the cameras
+// connected now) and replace the <option>s in place - spec 2026-11-06-camera-picker §4.4. The dialog
+// is already showing (a ZED query takes ~1.7 s cold), so only the re-read fields say Detecting….
+async function refreshLiveOptions(pluginName, fields) {
+  const dialog = document.getElementById(`${pluginName}_init_dialog`);
+  if( !dialog || dialog.dataset.refreshing )
+    return;
+  dialog.dataset.refreshing = '1';
+  dialog.querySelector('.live-options-notice')?.remove();
+
+  const helps = fields.map(f => document.getElementById(`${pluginName}_init_${f}_help`)).filter(el => el);
+  const original = helps.map(el => el.innerHTML);
+  helps.forEach(el => el.textContent = 'Detecting…');
+
+  const parameters = await fetchLiveParameters(pluginName);
+  delete dialog.dataset.refreshing;
+
+  if( parameters == null ) {
+    helps.forEach((el, i) => el.innerHTML = original[i]);
+    dialog.querySelector('.modal-body')?.insertAdjacentHTML('afterbegin',
+      '<div class="live-options-notice text-warning mb-2">Could not detect the cameras; the list may be out of date</div>');
+    return;
+  }
+
+  for( const update of liveSelectUpdates(parameters) ) {
+    const select = document.getElementById(`${pluginName}_init_${update.param}`);
+    if( !select )
+      continue;
+    select.innerHTML = update.html;
+    $(select).trigger('change');
+    const help = document.getElementById(`${pluginName}_init_${update.param}_help`);
+    if( help )
+      help.innerHTML = update.help;
   }
 }
 
@@ -1651,8 +2071,33 @@ function nodeLayoutInsertPos() {
 
 function addGraphEditor(name, id, grid_options) {
 
+  // Camera view never displays the graph - it only needs `drawflow` to exist
+  // (every addPlugin() call depends on it via drawflow.addNode()/
+  // getNodesFromName()), not an actual visible editor. Build the engine
+  // against a plain hidden <div>, completely outside GridStack, so no widget
+  // ever gets inserted at GraphEditor's saved position (see the 2026-09-22
+  // revision note at this function's call site for why that insert itself -
+  // not just a later removal - was displacing the real camera widgets).
+  // Skips the operator-only right-click "add plugin" menu setup below too -
+  // that's an editing action, not something the passive kiosk view needs.
+  if( viewMode === 'sensor' ) {
+    if( drawflow )
+      return true;  // already built earlier this session - nothing to redo
+    const hiddenHost = document.createElement('div');
+    hiddenHost.id = 'drawflow';
+    hiddenHost.style.display = 'none';
+    document.body.appendChild(hiddenHost);
+    drawflow = new Drawflow(hiddenHost);
+    drawflow.start();
+    drawflow.on('nodeMoved', onNodeMoved);
+    drawflow.on('nodeRemoved', onNodeRemoved);
+    drawflow.on('connectionCreated', onNodeConnectionCreated);
+    drawflow.on('connectionRemoved', onNodeConnectionRemoved);
+    return true;
+  }
+
   let titlebar_html = pluginMenuBar();
-  
+
   let html = `
     <div id="drawflow" class="mt-1 flex-grow-1 w-100"></div>
   `;
@@ -1662,28 +2107,28 @@ function addGraphEditor(name, id, grid_options) {
      html, titlebar_html,
      Object.assign({x: 0, y: 0, w: 8, h: 11}, grid_options)
   );
-  
+
   let editor = document.getElementById("drawflow");
-  
+
   editor.addEventListener('mouseenter', (event) => {
     //console.log('onmouseleave(drawflow) => disabling grid move/resize');
     grid.disable();
   });
-  
+
   editor.addEventListener('mouseleave', (event) => {
     //console.log('onmouseleave(drawflow) => enabling grid move/resize');
     grid.enable();
   });
-  
+
   drawflow = new Drawflow(editor);
   drawflow.start();
-  
+
   drawflow.on('nodeMoved', onNodeMoved);
   drawflow.on('nodeRemoved', onNodeRemoved);
-  
+
   drawflow.on('connectionCreated', onNodeConnectionCreated);
   drawflow.on('connectionRemoved', onNodeConnectionRemoved);
-  
+
   //drawflow.on('contextmenu', onNodeContextMenu);
   document.body.appendChild(fromHTML(pluginContextMenu()));
 
@@ -1699,8 +2144,10 @@ function addGraphEditor(name, id, grid_options) {
       if( 'init' in plugin && Object.keys(plugin['init']['parameters']).length > 0 ) {
         pluginMenu.addEventListener('click', (event) => {
           console.log(`opening init dialog for ${plugin['name']}`);
-          const modal = new bootstrap.Modal(`#${plugin['name']}_init_dialog`);
-          modal.show();
+          // getOrCreateInstance: a second click on the menu must not stack a second modal/backdrop
+          bootstrap.Modal.getOrCreateInstance(`#${plugin['name']}_init_dialog`).show();
+          if( plugin['live_type_hints'] )
+            refreshLiveOptions(plugin['name'], liveFields(plugin['init']['parameters']));
         });
       }
       else {
@@ -1821,6 +2268,14 @@ function addNodeContextMenu(x, y) {
 }
 
 function addDialog(id, title, html, xl, onsubmit, oncancel) {
+  // Replace, not duplicate: removePlugins() never cleans up a plugin's config dialog
+  // (only outputListeners/stateListeners/videoFrameListeners), so remove+re-add of the
+  // same-named plugin used to leave the old #<id> modal sitting in the DOM and append a
+  // second one with the identical id. getElementById()/jQuery's $('#id') both resolve to
+  // whichever matches first in document order - the OLD one, since new ones are appended
+  // at the end - so the dialog that actually opened kept showing stale parameter defaults
+  // from before the remove, and its bound onsubmit closure kept sending that stale data.
+  document.getElementById(id)?.remove();
   $('body').append(`
   <div class="modal fade" id="${id}" tabindex="-1" aria-labelledby="${id}_label" aria-hidden="true">
       <div class="modal-dialog ${xl ? 'modal-xl' : ''}">
@@ -1904,13 +2359,13 @@ function addPluginDialog(plugin_name, stage, title, description, parameters, max
     
     if( 'default' in param && param['default'] != undefined ) {
       value = param['default'];
-      value_html = `value="${value}"`;
+      value_html = `value="${escapeHtml(value)}"`;
     }
-     
+
     let help = '';
-    
+
     if( 'help' in param )
-      help = `<div id="${id}_help" class="form-text">${param['help']}</div>`;
+      help = `<div id="${id}_help" class="form-text">${escapeHtml(param['help'])}</div>`;
     
     if( param['type'] == 'boolean' ) {
       param['options'] = [true, false]
@@ -1935,16 +2390,8 @@ function addPluginDialog(plugin_name, stage, title, description, parameters, max
       }
       
       input_html += `<br/><select id="${id}" class="form-control select2" style="width: 100%;">\n`
-      
-      for( i in options ) {
-        if( options[i] == value )
-          var selected = ` selected="selected"`;
-        else
-          var selected = '';
-        
-        input_html += `  <option${selected}>${options[i]}</option>\n`
-      }
-      
+      // options may be {value, label}: a camera shows its model, the preset stores its by-id (dialog_options.js)
+      input_html += buildOptionsHtml(options, param['default'], has_suggestions && !has_options);
       input_html += `</select>\n`;
     }
     /*else if( 'suggestions' in param ) {

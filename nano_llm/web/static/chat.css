@@ -104,6 +104,206 @@ html, body {
     content: "Tool Response\A";
 }
 
+.thinking-block {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 85%;
+	color: #cccccc;
+	border-left: 2px solid #999999;
+	padding-left: 8px;
+}
+
+.thinking-block summary {
+	cursor: pointer;
+	font-style: italic;
+	color: #bbbbbb;
+}
+
+.thinking-content {
+	margin-top: 4px;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	opacity: 0.85;
+}
+
+.timeline-card {
+	border-left: 3px solid #888;
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 4px;
+	padding: 6px 10px;
+	margin: 6px 0;
+	font-size: 90%;
+}
+.timeline-card-header { font-weight: bold; opacity: 0.8; }
+.timeline-card-tool_call { border-left-color: #e0a030; }
+.timeline-card-thinking { border-left-color: #6090c0; font-style: italic; opacity: 0.85; }
+.timeline-card-done.timeline-card-error { border-left-color: #c04040; }
+.timeline-card-done.timeline-card-denied { border-left-color: #888; opacity: 0.6; }
+.timeline-card-done.timeline-card-timeout { border-left-color: #888; opacity: 0.6; }
+.timeline-tool-name { font-weight: bold; }
+.timeline-tool-args { font-size: 85%; white-space: pre-wrap; word-break: break-all; margin: 4px 0; }
+.timeline-tool-status { margin-top: 4px; }
+
+/* I3, final whole-branch review: a card can be interrupted (turn_error) while still
+   execution/streaming, i.e. NOT yet .timeline-card-done - the combo rule above only ever
+   covered a card that reached done AND errored, so an interrupted-but-not-done card got no
+   visible change at all. This standalone rule covers that case too. */
+.timeline-card-error { border-left-color: #c04040; }
+.timeline-error-message { color: #e08080; font-size: 85%; margin-top: 4px; }
+
+/* I1, final whole-branch review: the live-streaming final-answer node (a plain
+   .chat-message-bot sibling of the real chat bubbles, not a .timeline-card) and its
+   blinking "still generating" cursor. */
+.timeline-streaming-text { opacity: 0.9; }
+.timeline-cursor {
+	display: inline-block;
+	animation: timeline-cursor-blink 1s step-start infinite;
+}
+@keyframes timeline-cursor-blink {
+	50% { opacity: 0; }
+}
+
+/* AgentLoop's compaction_start/compaction_end timeline events (grid.js's channel-6 listener) -
+   same subdued, italic "background housekeeping" treatment as .thinking-block, with a gentle
+   pulse (reusing timeline-cursor-blink's keyframes) since compaction can take 13+ seconds and
+   this is the only visible sign anything is happening during that gap. */
+.compaction-indicator {
+	font-style: italic;
+	opacity: 0.75;
+	animation: timeline-cursor-blink 1.5s ease-in-out infinite;
+}
+
+/* Chat history frame (addChatWidget_no_input_history3): the scrolling history, the "↓ Latest"
+   button shown while the user has scrolled up (setupChatFollow), and AgentLoop's status bar. */
+.chat-history-wrap {
+	position: relative;
+	flex-grow: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+.chat-history-wrap > .chat-history {
+	flex-grow: 1;
+	min-height: 0;
+}
+.chat-jump-latest {
+	position: absolute;
+	right: 14px;
+	bottom: 42px;
+	z-index: 5;
+	border: none;
+	border-radius: 14px;
+	padding: 3px 12px;
+	font-size: 85%;
+	color: #fff;
+	background: rgba(0, 66, 128, 0.9);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.chat-jump-latest:hover { background: rgba(0, 86, 168, 1); }
+
+.agentloop-status {
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	font-size: 85%;
+	color: #ddd;
+	background: #3a3a3a;
+	border-top: 1px solid #666;
+}
+.agentloop-status-time { opacity: 0.7; margin-left: auto; font-variant-numeric: tabular-nums; }
+.agentloop-status-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #e0a030;
+	animation: timeline-cursor-blink 1.2s ease-in-out infinite;
+}
+
+/* AgentLoop chat layout: user on the right, answers on the left, cards indented between them. */
+.agentloop-chat {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.agentloop-chat > br { display: none; }
+.agentloop-chat > .mb-3 { margin-bottom: 0 !important; }
+.agentloop-chat > .chat-message-user {
+	align-self: flex-end;
+	max-width: 85%;
+	border-bottom-right-radius: 2px;
+}
+.agentloop-chat > .chat-message-bot {
+	align-self: flex-start;
+	max-width: 85%;
+	border-bottom-left-radius: 2px;
+}
+.agentloop-chat .timeline-card,
+.agentloop-chat > [id$="_timeline"] > .thinking-block {
+	margin: 0 12% 0 12px;
+}
+.agentloop-chat > [id$="_timeline"] {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.agentloop-chat .timeline-card { padding: 4px 10px; }
+
+/* one-line tool header: 🔧 name · args summary · 0.8 s · Done */
+.timeline-card-header .timeline-tool-name { font-weight: bold; }
+.timeline-tool-summary { font-weight: normal; opacity: 0.8; }
+.timeline-tool-meta { font-weight: normal; opacity: 0.7; }
+.timeline-tool-args-wrap > summary {
+	cursor: pointer;
+	font-size: 85%;
+	opacity: 0.7;
+}
+.timeline-tool-args-wrap[open] > summary { margin-bottom: 2px; }
+
+/* Markdown inside answers (markdown.js) */
+.chat-message-bot p { margin: 0; }
+.chat-message-bot p + p,
+.chat-message-bot p + ul, .chat-message-bot p + ol,
+.chat-message-bot ul + p, .chat-message-bot ol + p { margin-top: 6px; }
+.chat-message-bot ul, .chat-message-bot ol { margin: 4px 0 0 0; padding-left: 1.4em; }
+.chat-message-bot li + li { margin-top: 2px; }
+.chat-message-bot code {
+	color: #f8c471;
+	background: rgba(0, 0, 0, 0.25);
+	border-radius: 3px;
+	padding: 0 4px;
+	font-size: 90%;
+}
+.chat-message-bot pre.md-code {
+	background: rgba(0, 0, 0, 0.3);
+	border-radius: 4px;
+	padding: 6px 8px;
+	margin: 6px 0 0 0;
+}
+.chat-message-bot pre.md-code code { background: none; padding: 0; }
+.chat-message-bot .md-heading { font-weight: bold; margin-top: 6px; }
+.chat-message-bot .md-heading:first-child { margin-top: 0; }
+.chat-message-bot hr.md-rule { margin: 6px 0; opacity: 0.4; }
+.timeline-streaming-content { display: inline; }
+.timeline-streaming-content > :last-child { display: inline; }
+
+/* WakeWord widget (grid.js addWakeWordWidget) */
+.wake-word-widget {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	flex-grow: 1;
+	padding: 8px;
+}
+.wake-word-state { font-size: 150%; font-weight: bold; text-align: center; }
+.wake-word-listening { color: #7fd17f; animation: timeline-cursor-blink 1.2s ease-in-out infinite; }
+.wake-word-greeting, .wake-word-speaking { color: #8cc4ff; }
+.wake-word-thinking { color: #e0a030; }
+.wake-word-sleeping { color: #bbbbbb; }
+.wake-word-button { font-size: 120%; padding: 6px 18px; }
+.wake-word-last { font-size: 85%; opacity: 0.65; text-align: center; min-height: 1.2em; }
+
 .btn-close {
 	--bs-btn-close-white-filter: grayscale(100%) brightness(200%); /* invert(1) grayscale(100%) brightness(200%); */
 }

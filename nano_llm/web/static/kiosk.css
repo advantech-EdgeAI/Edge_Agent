@@ -1,0 +1,371 @@
+/* The booth's camera and brain screens (docs/superpowers/specs/2026-10-20-kiosk-display-design.md).
+   Laid out at 1920x1080 and scaled to the screen by kiosk.js.
+
+   Look (2026-10-21, the user: simple, less "AI", but with care in the details): one accent colour
+   (blue) and one notice colour (amber); everything else is greys stepped by lightness. No glows, no
+   gradients, no pulsing - except the pipeline, which is the screen's focus: coloured nodes and a
+   bright glowing data flow (the user, after seeing it all quiet: too plain). */
+:root {
+  --bg: #0c0e12;          /* stage */
+  --surface: #12151b;     /* panels */
+  --surface-2: #181c23;   /* cards inside panels, nodes */
+  --surface-3: #1f242d;   /* a lit node */
+  --line: #1e232b;        /* panel borders, row rules */
+  --line-2: #2e3540;      /* node and control borders */
+  --text: #e8eaed;
+  --text-2: #a3a9b2;
+  --text-3: #6c737d;
+  --accent: #3d7be0;
+  --accent-soft: rgba(61, 123, 224, 0.14);
+  --notice: #d9a35c;
+  --radius: 12px;
+  --radius-s: 8px;
+}
+
+html, body.kiosk { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--text);
+  font-family: "Noto Sans CJK TC", "Noto Sans TC", "PingFang TC", sans-serif; -webkit-font-smoothing: antialiased; }
+#kiosk-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: var(--bg);
+  transform-origin: top left; overflow: hidden; }
+
+/* banner: logo, title, the wake-word hint, a clock */
+.k-banner { position: absolute; left: 0; top: 0; width: 1920px; height: 64px; display: flex; align-items: center;
+  padding: 0 24px; box-sizing: border-box; background: var(--surface); border-bottom: 1px solid var(--line); }
+.k-badge { background: #f7f5f2; border-radius: 6px; padding: 6px 12px; height: 42px; box-sizing: border-box;
+  display: flex; align-items: center; }
+.k-badge img { height: 100%; }
+.k-brand { margin-left: 20px; padding-left: 20px; border-left: 1px solid var(--line-2); min-width: 0; flex-shrink: 1; }
+.k-brand-title { font-size: 26px; font-weight: 700; letter-spacing: 0.6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: linear-gradient(90deg, #ffffff, #9fc3ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.k-call { margin-left: auto; display: flex; align-items: center; gap: 12px; padding: 6px 20px 6px 7px; border-radius: 24px;
+  border: 1px solid var(--line-2); color: var(--text-2); font-size: 19px; font-weight: 500; letter-spacing: 0.3px; }
+.k-mic { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: flex;
+  align-items: center; justify-content: center; }
+.k-mic { position: relative; transition: box-shadow .3s; }
+/* a voice conversation is on (WakeWord not asleep): the hint lights up and the mic pulses */
+.k-call { transition: border-color .3s, background .3s, box-shadow .3s, color .3s; min-width: 300px; box-sizing: border-box; }
+.k-call-text { flex: 1; text-align: center; }   /* a fixed-width pill: the state text changes, the pill does not jump */
+.k-call.on { border-color: #2f6fd6; background: rgba(47, 111, 214, 0.18); color: #fff;
+  box-shadow: 0 0 22px rgba(47, 111, 214, 0.65); }
+.k-call.on .k-mic { box-shadow: 0 0 12px #5b93ff; }
+.k-call.on .k-mic::before { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid #5b93ff;
+  animation: kpulse 1.6s ease-out infinite; }
+@keyframes kpulse { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.8); opacity: 0; } }
+.k-mic svg { width: 17px; height: 17px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; }
+.k-mic svg rect { fill: #fff; stroke: none; }
+.k-clock { margin-left: 24px; font-size: 22px; font-weight: 500; color: var(--text-2); font-variant-numeric: tabular-nums;
+  letter-spacing: 1px; }
+/* startup screen (2026-10-21): the banner's badge and gradient title, one card of steps, a thin
+   glowing bar - over the whole stage until Studio, the pipeline and the models are ready */
+.k-boot { position: absolute; inset: 0; z-index: 60; background: var(--bg); display: flex; align-items: center;
+  justify-content: center; transition: opacity .7s ease, visibility 0s linear 0s; }
+.k-boot.done { opacity: 0; visibility: hidden; transition: opacity .7s ease, visibility 0s linear .7s; }
+.k-boot-glow { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 52% 46% at 50% 44%, rgba(61, 123, 224, 0.16), rgba(61, 123, 224, 0) 70%); }
+.k-boot-col { position: relative; display: flex; flex-direction: column; align-items: center; width: 720px; }
+.k-boot-badge { height: 58px; padding: 8px 18px; border-radius: 8px; }
+.k-boot-brand { margin-top: 26px; font-size: 64px; letter-spacing: 1.5px; }
+.k-boot-title { margin-top: 14px; font-size: 26px; font-weight: 500; color: var(--text-2); letter-spacing: 2px; }
+.k-boot-dots i { font-style: normal; animation: kbootdot 1.4s infinite; opacity: 0; }
+.k-boot-dots i:nth-child(2) { animation-delay: .2s; }
+.k-boot-dots i:nth-child(3) { animation-delay: .4s; }
+@keyframes kbootdot { 0%, 20% { opacity: 0; } 40%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.k-boot-card { margin-top: 40px; width: 100%; box-sizing: border-box; padding: 10px 30px; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--line-2); }
+.k-boot-step { display: grid; grid-template-columns: 34px 1fr; grid-template-rows: auto auto; column-gap: 14px;
+  padding: 16px 0; border-bottom: 1px solid var(--line); }
+.k-boot-step:last-child { border-bottom: none; }
+.k-boot-icon { grid-row: 1 / span 2; align-self: center; width: 26px; height: 26px; border-radius: 50%; box-sizing: border-box;
+  border: 2px solid var(--line-2); position: relative; }
+.k-boot-label { font-size: 22px; font-weight: 500; color: var(--text-3); }
+.k-boot-detail { font-size: 16px; color: var(--text-3); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.k-boot-detail:empty { display: none; }
+.k-boot-step.done .k-boot-icon { background: var(--accent); border-color: var(--accent); }
+.k-boot-step.done .k-boot-icon::after { content: ''; position: absolute; left: 8px; top: 4px; width: 6px; height: 11px;
+  border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+.k-boot-step.done .k-boot-label { color: var(--text-2); }
+.k-boot-step.active .k-boot-icon { border-color: rgba(61, 123, 224, 0.25); border-top-color: var(--accent);
+  animation: kbootspin .9s linear infinite; box-shadow: 0 0 14px rgba(61, 123, 224, 0.45); }
+.k-boot-step.active .k-boot-label { color: var(--text); }
+.k-boot-step.active .k-boot-detail { color: var(--text-2); }
+.k-boot-step.failed .k-boot-icon { border-color: var(--notice); }
+.k-boot-step.failed .k-boot-icon::after { content: '!'; position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 15px; font-weight: 700; color: var(--notice); }
+.k-boot-step.failed .k-boot-label, .k-boot-step.failed .k-boot-detail { color: var(--notice); }
+@keyframes kbootspin { to { transform: rotate(360deg); } }
+.k-boot-bar { margin-top: 30px; width: 100%; height: 3px; border-radius: 2px; overflow: hidden; background: var(--line); }
+.k-boot-bar span { display: block; width: 34%; height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(61, 123, 224, 0), var(--accent), #9fc3ff);
+  box-shadow: 0 0 12px rgba(91, 147, 255, 0.8); animation: kbootbar 2.2s ease-in-out infinite; }
+@keyframes kbootbar { 0% { transform: translateX(-110%); } 100% { transform: translateX(310%); } }
+.k-boot-hint { margin-top: 18px; font-size: 16px; color: var(--text-3); letter-spacing: 0.5px; }
+
+/* camera screen slots */
+.k-slot { position: absolute; background: #0f1115; border-radius: var(--radius-s); overflow: hidden; }
+.k-slot .k-media { position: absolute; inset: 0; }
+.k-slot .k-media.k-below-label { top: 40px; }   /* content whose top-left the label would cover */
+.k-slot img.k-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: none; }
+.k-slot .imu-view { position: absolute; inset: 0; border-radius: 0; }
+.k-slot > div > .imu-view, .k-slot .k-media > .imu-view { position: absolute; inset: 0; }
+.k-label { position: absolute; left: 10px; top: 8px; z-index: 5; font-size: 16px; font-weight: 600; padding: 2px 10px 2px 8px;
+  border-radius: 5px; background: rgba(0, 0, 0, 0.55); color: var(--text); letter-spacing: 0.3px; }
+.k-label.usb { border-left: 3px solid #6f9ae6; }
+.k-missing { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--text-3); font-size: 20px; }
+.k-slot .sensor-signal-overlay { font-size: 24px; }
+
+/* brain screen panels */
+.k-panel { position: absolute; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.k-panel-title { position: absolute; left: 18px; top: 13px; font-size: 14px; font-weight: 600; letter-spacing: 3px;
+  color: var(--text-3); z-index: 3; }
+.k-tabs { position: absolute; right: 14px; top: 9px; display: flex; gap: 0; z-index: 3; border: 1px solid var(--line-2);
+  border-radius: var(--radius-s); overflow: hidden; }
+.k-tab { padding: 4px 16px; font-size: 16px; border: 0; color: var(--text-3); background: transparent; cursor: pointer; }
+.k-tab + .k-tab { border-left: 1px solid var(--line-2); }
+.k-tab.on { background: var(--surface-3); color: var(--text); }
+
+/* pipeline (Drawflow): the screen's focus - the original coloured nodes (the user, 2026-10-21: the
+   grey nodes were too plain) and a bright, glowing data flow; the panels around it stay quiet */
+.k-flow-host { position: absolute; left: 0; right: 0; top: 44px; bottom: 0; }
+.k-flow-host .drawflow { background: transparent; }
+.k-flow-host .drawflow .drawflow-node { min-height: 0; padding: 8px 12px; width: auto; min-width: 140px; box-shadow: none; }
+.k-flow-host .drawflow .drawflow-node.k-node { --k-c: #8a95a8; background: color-mix(in srgb, var(--k-c) 28%, #10141d);
+  border: 2px solid var(--k-c); border-radius: 8px; color: #fff; font-size: 20px; font-weight: 600; }
+/* node colours by what the node does (kiosk_logic.js nodeCategory) */
+.k-flow-host .drawflow .drawflow-node.k-cat-cache { --k-c: #8fb3d9; }
+.k-flow-host .drawflow .drawflow-node.k-cat-voice { --k-c: #2ec4b6; }
+.k-flow-host .drawflow .drawflow-node.k-cat-ai    { --k-c: #b07cff; }
+.k-flow-host .drawflow .drawflow-node.k-cat-tools { --k-c: #ffc93c; }
+.k-flow-host .drawflow .drawflow-node.k-node .k-node-stub { color: #c8d0de; font-size: 15px; font-weight: 400; }
+.k-flow-host .drawflow .drawflow-node .input, .k-flow-host .drawflow .drawflow-node .output {
+  width: 12px; height: 12px; border: 2px solid #4a5672; background: #10141d; }
+.k-flow-host .drawflow .drawflow-node.k-node.k-active { box-shadow: 0 0 18px var(--k-c); }
+.k-flow-host .drawflow .drawflow-node.k-node.k-generating, .k-flow-host .drawflow .drawflow-node.k-node.k-running {
+  background: color-mix(in srgb, var(--k-c) 55%, #10141d); box-shadow: 0 0 24px var(--k-c); }
+.k-flow-host .drawflow .drawflow-node.k-node.k-read { border-color: #ffbf80; box-shadow: 0 0 22px #ff9a3c; }
+.k-flow-host .drawflow .connection .main-path { stroke: #3a4458; stroke-width: 3px; }
+/* wire bend points (2026-11-06): only while arranging */
+.k-flow-host .drawflow .connection .point { display: none; }
+body.k-edit .k-flow-host .drawflow .connection .point { display: inline; fill: #10141d; stroke: #5cf0a8; stroke-width: 2px; cursor: move; }
+body.k-edit .k-flow-host .drawflow .connection .main-path { cursor: copy; }
+/* the data flow: brighter than before and glowing, so the eye goes there */
+.k-flow-host .drawflow .connection.k-flow .main-path { stroke: #5cf0a8; stroke-width: 4px; stroke-dasharray: 12 8;
+  stroke-linecap: round; opacity: calc(0.6 + var(--k-flow, 0) * 0.4);
+  filter: drop-shadow(0 0 4px rgba(92, 240, 168, 0.9)) drop-shadow(0 0 10px rgba(92, 240, 168, 0.45));
+  animation: kflow calc(1.3s - var(--k-flow, 0) * 1s) linear infinite; }
+@keyframes kflow { to { stroke-dashoffset: -40; } }
+/* a node's live state ("生成中", "執行中：<tool>", "讀取中"): a label floating under the node, so the
+   node never changes size - a wider node moved its connectors off the drawn lines (2026-10-21) */
+.k-node-note { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); white-space: nowrap;
+  font-size: 18px; font-weight: 700; color: #5cf0a8; background: rgba(11, 13, 18, 0.88); padding: 1px 10px;
+  border-radius: 6px; pointer-events: none; z-index: 6; }
+.k-node-note:empty { display: none; }
+.k-flow-host .drawflow .drawflow-node.k-node.k-read .k-node-note { color: #ffbf80; }
+.k-stub { position: absolute; font-size: 14px; color: #7f8aa0; white-space: nowrap; pointer-events: none; z-index: 4; }
+/* a tool reading a cache by name (no wire) */
+svg.k-virtual { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; overflow: visible; }
+svg.k-virtual path { fill: none; stroke: #ffbf80; stroke-width: 3px; stroke-dasharray: 4 6; stroke-linecap: round;
+  filter: drop-shadow(0 0 5px rgba(255, 154, 60, 0.8)); animation: kflow .8s linear infinite; }
+
+/* performance */
+.perf-kiosk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; position: absolute; left: 14px; right: 14px; top: 46px; bottom: 14px; }
+.perf-kiosk .perf-card { background: var(--surface-2); border-radius: var(--radius-s); padding: 10px; display: flex; flex-direction: column; justify-content: center; }
+.perf-kiosk .perf-label { font-size: 16px; color: var(--text-3); }
+.perf-kiosk .perf-value { white-space: nowrap; font-size: 32px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.k-perf { position: absolute; left: 16px; right: 16px; top: 44px; bottom: 14px; display: flex; flex-direction: column; gap: 10px; }
+.k-perf-model { align-self: flex-end; margin-top: -33px; font-size: 14px; color: var(--text-3); letter-spacing: 0.5px; min-height: 1em; }
+.k-perf-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.k-perf-card { background: var(--surface-2); border-radius: var(--radius-s); padding: 9px 14px 5px; }
+.k-perf-label { font-size: 14px; color: var(--text-3); letter-spacing: 1px; }
+.k-perf-value { font-size: 30px; font-weight: 600; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums;
+  margin-top: 2px; }
+.k-perf-card svg { width: 100%; height: 22px; display: block; margin-top: 2px; }
+.k-perf-card polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; opacity: 0.8; vector-effect: non-scaling-stroke; }
+.k-perf-turn-title { font-size: 14px; color: var(--text-3); letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k-perf-turn-title span { color: var(--text-2); letter-spacing: 0; }
+.k-perf-turn { display: flex; gap: 2px; height: 52px; border-radius: var(--radius-s); overflow: hidden; }
+.k-seg { min-width: 0; padding: 4px 9px; display: flex; flex-direction: column; justify-content: center;
+  overflow: hidden; white-space: nowrap; font-size: 13px; color: var(--text-2); background: var(--surface-2);
+  border-top: 2px solid var(--k-s, var(--line-2)); }
+.k-seg span { overflow: hidden; text-overflow: ellipsis; }
+.k-seg b { font-size: 16px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.k-seg-asr, .k-seg-tts { --k-s: #5fb3a8; } .k-seg-model { --k-s: var(--accent); } .k-seg-tool { --k-s: #c9ad5f; }
+.k-perf-extra { font-size: 14px; color: var(--text-3); white-space: nowrap; overflow: hidden; letter-spacing: 0.3px; }
+
+/* object tracking: one line per kind, so a booth full of things still shows several kinds (2026-10-21) */
+.k-track-list { position: absolute; left: 16px; right: 16px; top: 46px; bottom: 10px; overflow: hidden; font-size: 21px; }
+.k-track-goal { color: var(--text-2); font-size: 17px; padding: 2px 2px 8px; border-bottom: 1px solid var(--line); margin-bottom: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k-track-goal b { color: var(--text); font-weight: 600; }
+.k-track-cam { display: block; color: var(--text-3); font-size: 14px; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.k-track-miss { color: var(--notice); }
+.k-track-row { display: flex; align-items: baseline; gap: 10px; padding: 6px 2px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.k-track-name { font-weight: 500; color: var(--text); flex: none; }
+.k-track-count { margin-left: 8px; color: var(--text-2); font-size: 18px; font-variant-numeric: tabular-nums; }
+.k-track-cams { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: var(--text-3); }
+.k-track-dist { flex: none; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.k-track-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; vertical-align: 3px; }
+.k-track-empty { color: var(--text-3); padding: 6px 2px; font-size: 18px; }
+.k-track-more { color: var(--text-3); font-size: 15px; padding: 7px 2px; }
+
+/* chat column: Studio's chat (chat_view.js) at booth size; its colours are the kiosk's own */
+.k-chat { position: absolute; left: 16px; right: 16px; top: 44px; bottom: 14px; display: flex; flex-direction: column; }
+.k-chat .chat-history-wrap { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+.k-chat .chat-history { flex: 1; min-height: 0; background: transparent !important; font-size: 22px !important; }
+.k-chat .chat-message-user { background: var(--accent) !important; color: #fff; border-radius: 16px 16px 4px 16px !important;
+  padding: 8px 16px !important; font-weight: 500; }
+.k-chat .chat-message-bot { background: #172033 !important; color: var(--text); font-size: 26px; line-height: 1.5;
+  border-radius: 16px 16px 16px 4px !important; padding: 10px 18px !important; }
+.k-chat .timeline-card { background: transparent !important; border-left: 2px solid #c9ad5f !important; border-radius: 0;
+  padding: 2px 10px !important; }
+.k-chat .timeline-card, .k-chat .timeline-card * { font-size: 15px; color: var(--text-3); }
+.k-chat .timeline-card .timeline-tool-name { color: var(--text-2); }
+.k-chat .agentloop-status { font-size: 20px; color: var(--text-2); }
+/* the input: one rounded bar, the send button inside it */
+.k-chat .chat-input { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 5px 5px 5px 20px;
+  border: 1px solid var(--line-2); border-radius: 26px; background: var(--surface-2); flex-wrap: nowrap; transition: border-color .2s; }
+.k-chat .chat-input:focus-within { border-color: var(--accent); }
+.k-chat .chat-input textarea, .k-chat .chat-input textarea:focus { flex: 1; font-size: 21px; background: transparent !important;
+  color: var(--text) !important; border: 0 !important; box-shadow: none !important; outline: none; resize: none; padding: 6px 0;
+  min-height: 0; height: 40px; line-height: 28px; border-radius: 0 !important; }
+.k-chat .chat-input textarea::placeholder { color: var(--text-3); }
+.k-chat .chat-send { flex: none; font-size: 19px; height: 44px; padding: 0 22px; background: var(--accent); color: #fff; border: 0;
+  border-radius: 22px !important; font-weight: 600; cursor: pointer; letter-spacing: 1px; }
+.k-chat .chat-send:hover { background: #4a88ea; }
+/* dark scrollbars (a white one showed in the chat column, 2026-10-20) */
+.k-chat .chat-history { scrollbar-color: var(--line-2) transparent; scrollbar-width: thin; }
+.k-chat .chat-history::-webkit-scrollbar { width: 6px; }
+.k-chat .chat-history::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
+.k-chat .chat-history::-webkit-scrollbar-track { background: transparent; }
+
+/* what the AI just saw */
+.k-seen { position: absolute; left: 16px; right: 16px; top: 44px; bottom: 14px; border-radius: var(--radius-s); overflow: hidden; background: #0f1115; }
+.k-seen-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.k-seen-caption { position: absolute; left: 10px; bottom: 10px; font-size: 15px; padding: 3px 10px; border-radius: 5px;
+  background: rgba(0, 0, 0, 0.6); color: var(--text); letter-spacing: 0.3px; }
+.k-seen-caption:empty { display: none; }
+.k-seen-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+
+/* kiosk-only pipeline layout editor (spec §7): ?screen=brain&edit=1 */
+.k-hide { display: none; position: absolute; right: -10px; top: -10px; width: 24px; height: 24px; border-radius: 50%;
+  border: 0; background: #c94a4a; color: #fff; font-size: 13px; line-height: 24px; padding: 0; cursor: pointer; z-index: 5; }
+body.k-edit .k-hide { display: block; }
+body.k-edit .k-flow-host .drawflow .drawflow-node { cursor: move; }
+.k-edit-bar { position: absolute; left: 260px; right: 360px; top: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; z-index: 4; }
+.k-edit-hint { color: var(--notice); font-size: 14px; }
+.k-edit-btn { font-size: 14px; padding: 2px 10px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); cursor: pointer; }
+.k-edit-save { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* the brain screen's speaker is locked until the page is clicked (kiosk_audio.js) */
+/* bottom centre, accent-coloured and pulsing: a booth screen that stays silent is easy to miss (2026-10-21) */
+.k-audio-hint { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 50; display: none;
+  padding: 10px 26px; border-radius: 24px; border: 2px solid var(--accent); background: rgba(12, 14, 18, 0.92);
+  color: var(--text); font-size: 20px; letter-spacing: 1px; pointer-events: none; animation: kaudio 1.6s ease-in-out infinite; }
+@keyframes kaudio { 0%, 100% { box-shadow: 0 0 0 0 rgba(61, 123, 224, 0.55); } 50% { box-shadow: 0 0 0 10px rgba(61, 123, 224, 0); } }
+.k-audio-hint.on { display: block; }
+
+/* English (?lang=en): Latin titles need far less tracking than Chinese ones (2026-10-21) */
+html[lang="en"] .k-panel-title { letter-spacing: 1.2px; }
+
+/* the voice conversation (2026-10-21): level bars in the lit pill, the listening bubble in the chat */
+.k-levels { display: none; align-items: flex-end; gap: 3px; height: 18px; margin-left: 2px; }
+.k-call.on .k-levels { display: flex; }
+.k-levels i { width: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.22); transition: background .12s; }
+.k-levels i:nth-child(1) { height: 6px; } .k-levels i:nth-child(2) { height: 9px; } .k-levels i:nth-child(3) { height: 12px; }
+.k-levels i:nth-child(4) { height: 15px; } .k-levels i:nth-child(5) { height: 18px; }
+.k-levels i.lit { background: #9fc3ff; box-shadow: 0 0 6px rgba(159, 195, 255, 0.7); }
+/* in the chat's column between the history and the input (2026-10-27): floated over the history it
+   covered the last answer whenever the wake word went back to listening after a reply */
+.k-listen { display: none; flex: none; align-self: flex-end; max-width: 72%; min-width: 220px; box-sizing: border-box;
+  margin-top: 4px; padding: 10px 18px 13px; border-radius: 18px 18px 4px 18px; border: 1.5px dashed rgba(91, 147, 255, 0.75);
+  background: rgba(61, 123, 224, 0.10); pointer-events: none; }
+.k-listen.on { display: block; animation: klistenin .25s ease; }
+@keyframes klistenin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.k-listen-label { display: flex; align-items: center; gap: 8px; font-size: 15px; color: #9fc3ff; letter-spacing: 1px; }
+.k-listen-dot { width: 8px; height: 8px; border-radius: 50%; background: #5b93ff; animation: klistendot 1.2s ease-in-out infinite; }
+@keyframes klistendot { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
+.k-listen-text { margin-top: 4px; font-size: 22px; color: var(--text); min-height: 1.3em; word-break: break-word; }
+.k-listen-text:empty::before { content: '…'; color: var(--text-3); }
+
+/* camera screen: the camera the AI is reading (2026-10-22) */
+.k-slot { transition: box-shadow .45s ease; }
+.k-slot.k-looked { box-shadow: 0 0 0 3px var(--accent), 0 0 26px rgba(61, 123, 224, 0.55); }
+.k-looked-tag { position: absolute; right: 10px; top: 8px; z-index: 6; padding: 3px 12px; border-radius: 12px;
+  background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 0.5px;
+  opacity: 0; transition: opacity .3s ease; pointer-events: none; }
+.k-slot.k-looked .k-looked-tag { opacity: 1; }
+
+
+/* single page (2026-11-04): typed only, four numbers in the banner, a tracking tag on the camera */
+body.k-single .k-call, body.k-nowake .k-call { display: none; }
+/* one line always (2026-11-06): the numbers and the clock keep their width, a long title is cut with … */
+.k-kpis { margin-left: auto; display: flex; gap: 10px; flex-shrink: 0; margin-right: 16px; }
+.k-banner > .k-call, .k-banner > .k-clock { flex-shrink: 0; }
+/* the browser microphone (2026-11-06): only for a WebAudioIn preset */
+.k-micbtn { flex-shrink: 0; margin-left: 12px; padding: 6px 16px; border-radius: 18px; font-size: 16px; cursor: pointer;
+  white-space: nowrap; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); }
+.k-micbtn.on { background: rgba(229, 72, 77, 0.2); border-color: #e5484d; color: #fff; }
+.k-kpi { display: flex; align-items: baseline; gap: 8px; padding: 6px 14px; border-radius: 18px; white-space: nowrap;
+  background: var(--surface-2); border: 1px solid var(--line-2); font-size: 16px; color: var(--text-2); }
+.k-kpi b { font-size: 20px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.k-track-tag { position: absolute; right: 10px; top: 44px; z-index: 6; max-width: 50%; padding: 4px 12px;
+  border-radius: 12px; background: rgba(18, 21, 27, 0.82); border: 1px solid var(--notice); color: var(--text);
+  font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; display: none; }
+.k-track-tag.on { display: block; }
+/* "試試問我" (2026-11-04): one example question over the chat input; a click asks it */
+.k-examples { flex: none; margin: 6px 0 8px; padding: 8px 14px; text-align: left; border-radius: 12px; cursor: pointer;
+  background: var(--accent-soft); border: 1px dashed var(--accent); color: var(--text); font-size: 19px; font-family: inherit;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .3s; }
+.k-examples:hover { background: rgba(61, 123, 224, 0.26); }
+.k-examples-label { color: var(--text-2); margin-right: 4px; }
+.k-examples.busy { opacity: 0.35; cursor: default; }
+.k-examples.k-in { animation: kExampleIn .5s ease; }
+@keyframes kExampleIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.k-examples.busy.k-in { animation: none; }
+
+/* the auto page, /kiosk?screen=auto (spec 2026-11-06-generic-kiosk-display §4, §5) */
+.k-auto-back { margin-left: 24px; padding: 6px 16px; border: 1px solid var(--line-2); border-radius: 18px;
+  color: var(--text-2); font-size: 16px; text-decoration: none; }
+.k-auto-back:hover { color: var(--text); border-color: var(--accent); }
+.k-auto-body { position: absolute; left: 18px; right: 18px; top: 44px; bottom: 16px; display: flex; flex-direction: column;
+  gap: 10px; overflow: hidden; }
+.k-auto-verdict { font-size: 30px; font-weight: 600; line-height: 1.3; color: var(--text); overflow-wrap: anywhere; }
+.k-auto-older { font-size: 17px; color: var(--text-2); line-height: 1.5; }
+.k-auto-older > div + div { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 4px; }
+.k-auto-card.k-auto-alarm { border: 2px solid #e5484d; }
+.k-auto-card.k-auto-alarm .k-auto-verdict { color: #ff6b6e; }
+/* RAG: the picture now beside the closest reference */
+.k-auto-pair { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.k-auto-pair figure { margin: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.k-auto-pair figcaption { font-size: 15px; color: var(--text-3); text-align: center; }
+.k-auto-img { flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; border-radius: var(--radius-s); }
+.k-auto-none { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center;
+  background: #000; border-radius: var(--radius-s); color: var(--text-3); font-size: 17px; }
+.k-auto-more { margin-top: auto; font-size: 13px; color: var(--text-3); text-align: right; }
+/* an alert: a red frame round the whole page, inside the stage so it covers no panel (panels start 8 px in) */
+body.k-alarm #kiosk-stage::after { content: ''; position: absolute; inset: 0; border: 6px solid #e5484d; box-sizing: border-box;
+  box-shadow: inset 0 0 22px rgba(229, 72, 77, 0.6); pointer-events: none; z-index: 100; }
+body.k-alarm .k-banner { background: #e5484d; }
+body.k-alarm .k-brand-title { background: none; color: #fff; }
+/* RAG: tag the current frame (same message as Studio's NanoDB widget) */
+.k-auto-tag { display: flex; gap: 8px; }
+.k-auto-tag input { flex: 1; min-width: 0; padding: 6px 10px; font-size: 15px; color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--line-2); border-radius: var(--radius-s); }
+.k-auto-tag button, .k-auto-chips button { padding: 6px 14px; font-size: 15px; color: var(--text); background: var(--surface-3);
+  border: 1px solid var(--line-2); border-radius: var(--radius-s); cursor: pointer; }
+.k-auto-tag button:hover, .k-auto-chips button:hover { border-color: var(--accent); }
+.k-auto-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* auto-label folder upload (2026-11-06): the file input hides inside a button-looking label */
+.k-auto-pick { flex: 1; padding: 6px 14px; font-size: 15px; text-align: center; cursor: pointer; color: var(--text);
+               background: var(--surface-3); border: 1px solid var(--line); border-radius: 6px; }
+.k-auto-pick:hover { border-color: var(--accent); }
+.k-auto-pick input { display: none; }
+.k-auto-start { max-height: 160px; max-width: 100%; align-self: flex-start; border-radius: 6px; border: 1px solid var(--line); }
+.k-auto-tag button:disabled { opacity: 0.45; cursor: default; }
+.k-auto-download { align-self: flex-start; padding: 4px 12px; font-size: 15px; color: var(--accent);
+                   border: 1px solid var(--accent); border-radius: 6px; text-decoration: none; }
+/* event log card: thumbnail + time + summary, newest first */
+.k-auto-events { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; color: var(--text-2); font-size: 16px; }
+.k-auto-event { display: flex; gap: 10px; align-items: flex-start; }
+.k-auto-event img { width: 120px; height: 68px; object-fit: cover; border-radius: var(--radius-s); background: #000; flex: none; }
+.k-auto-event b { color: var(--text); font-weight: 600; }
+.k-auto-event.pending div div { color: var(--text-3); font-style: italic; }

@@ -6,22 +6,16 @@
         "x": 0,
         "y": 0,
         "w": 8,
-        "h": 14
+        "h": 11
       }
     },
     "TerminalPlugin": {
       "layout_grid": {
         "x": 0,
-        "y": 14,
+        "y": 11,
         "w": 8,
         "h": 6
       }
-    },
-    "NanoLLM_ICL": {
-      "layout_grid": {}
-    },
-    "VideoOutput": {
-      "layout_grid": {}
     }
   },
   "plugins": [
@@ -43,22 +37,17 @@
           "to": "One_Step_Alert",
           "input": 0,
           "output": 2
-        },
-        {
-          "to": "WebClient",
-          "input": 0,
-          "output": 4
         }
       ],
       "layout_grid": {
         "x": 8,
-        "y": 0,
+        "y": 11,
         "w": 4,
-        "h": 14
+        "h": 12
       },
       "layout_node": {
-        "x": 1245,
-        "y": 43
+        "x": 1004,
+        "y": 19.75
       },
       "max_new_tokens": 128,
       "min_new_tokens": -1,
@@ -91,8 +80,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 805.5,
-        "y": 30.75
+        "x": 597.5,
+        "y": 66
       },
       "rate": 15.0,
       "chunk": null,
@@ -116,8 +105,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1415.25,
-        "y": 305
+        "x": 1206,
+        "y": 227.75
       },
       "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
       "font_size": 32.0,
@@ -155,15 +144,15 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1021,
-        "y": 47.5
+        "x": 801.25,
+        "y": 70
       },
       "template": "<reset><image><image><image>Does the image show any smoke ?Return \"Yes\" if you see any, or \"No\" if there is no visible smoke.",
       "seq_replace_mode": true,
       "ROI": false,
       "ROI_Coordinates": "0,0,1,1",
       "init_kwargs": {
-        "template": "<reset><image>Does the image show any smoke ?Return \"Yes\" if you see any, or \"No\" if there is no visible smoke.",
+        "template": "<reset><image><image><image>Does the image show any smoke ?Return \"Yes\" if you see any, or \"No\" if there is no visible smoke.",
         "seq_replace_mode": true,
         "name": "AutoPrompt_ICL"
       }
@@ -173,14 +162,14 @@
       "type": "TextStream",
       "connections": [],
       "layout_grid": {
-        "x": 8,
-        "y": 14,
+        "x": 4,
+        "y": 17,
         "w": 4,
         "h": 6
       },
       "layout_node": {
-        "x": 1513.5234375,
-        "y": 118.09375
+        "x": 1311,
+        "y": 100.5
       },
       "text_color": "white",
       "partial_color": "dodgerblue",
@@ -199,8 +188,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1283,
-        "y": -104
+        "x": 1398.5,
+        "y": -71
       },
       "voice": "en_US-libritts-high",
       "speaker": "p339",
@@ -229,8 +218,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1498,
-        "y": -108
+        "x": 1587.5,
+        "y": -74
       },
       "rate": 1.0,
       "chunk": 4800,
@@ -240,7 +229,7 @@
         "chunk": 4800,
         "drop_inputs": true,
         "on_demand": false,
-        "name": "RateLimit"
+        "name": "RateLimit_1"
       }
     },
     {
@@ -249,8 +238,8 @@
       "connections": [],
       "layout_grid": {},
       "layout_node": {
-        "x": 1742,
-        "y": -88
+        "x": 1790,
+        "y": -64.75
       },
       "init_kwargs": {}
     },
@@ -266,8 +255,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1043.909090909091,
-        "y": -119.9090909090909
+        "x": 1201.75,
+        "y": -78
       },
       "check_time": 5,
       "alert_keyword": "yes",
@@ -302,8 +291,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 497,
-        "y": 98
+        "x": 390.25,
+        "y": 134
       },
       "init_kwargs": {
         "video_input": "/data/videos/demo/Smoke_advan.mp4",
@@ -319,13 +308,20 @@
       "name": "VideoOutput",
       "type": "VideoOutput",
       "connections": [],
-      "layout_grid": {},
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 11
+      },
       "layout_node": {
-        "x": 1677,
-        "y": 326
+        "x": 1400.5,
+        "y": 227
       },
       "ROI": false,
       "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "mjpeg_port": 10000,
       "init_kwargs": {
         "video_output": "display://",
         "ROI": false,

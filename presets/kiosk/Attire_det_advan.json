@@ -1,0 +1,35 @@
+{
+ "auto": {
+  "positions": {
+   "PiperTTS": {
+    "x": 1261,
+    "y": 288
+   },
+   "RateLimit": {
+    "x": 1437,
+    "y": 288
+   },
+   "WebAudioOut": {
+    "x": 1618,
+    "y": 286
+   },
+   "VideoSource": {
+    "x": 591,
+    "y": 375
+   },
+   "RateLimit_1": {
+    "x": 781,
+    "y": 375
+   },
+   "OpenWord_detector": {
+    "x": 969,
+    "y": 351
+   },
+   "VideoOutput": {
+    "x": 1260,
+    "y": 414
+   }
+  },
+  "hidden": []
+ }
+}

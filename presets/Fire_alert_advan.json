@@ -6,25 +6,16 @@
         "x": 0,
         "y": 0,
         "w": 8,
-        "h": 14
+        "h": 11
       }
     },
     "TerminalPlugin": {
       "layout_grid": {
         "x": 0,
-        "y": 4,
+        "y": 11,
         "w": 8,
         "h": 6
       }
-    },
-    "VideoOutput": {
-      "layout_grid": {}
-    },
-    "NanoLLM_ICL": {
-      "layout_grid": {}
-    },
-    "NanoDB_Fashion": {
-      "layout_grid": {}
     }
   },
   "plugins": [
@@ -40,8 +31,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1503,
-        "y": 300
+        "x": 1413.6666666666667,
+        "y": 291
       },
       "font": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
       "font_size": 32.0,
@@ -79,15 +70,15 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1031.111111111111,
-        "y": 119.11111111111111
+        "x": 991,
+        "y": 154.66666666666666
       },
       "template": "<reset><image><image><image>Does the image show any fire ?Return \"Yes\" if you see any, or \"No\" if there is no visible fire .",
       "seq_replace_mode": true,
       "ROI": false,
       "ROI_Coordinates": "0,0,1,1",
       "init_kwargs": {
-        "template": "<reset><image>Does the image show any fire ?Return \"Yes\" if you see any, or \"No\" if there is no visible fire .",
+        "template": "<reset><image><image><image>Does the image show any fire ?Return \"Yes\" if you see any, or \"No\" if there is no visible fire .",
         "seq_replace_mode": true,
         "name": "AutoPrompt_ICL"
       }
@@ -97,14 +88,14 @@
       "type": "TextStream",
       "connections": [],
       "layout_grid": {
-        "x": 8,
-        "y": 14,
+        "x": 4,
+        "y": 17,
         "w": 4,
         "h": 6
       },
       "layout_node": {
-        "x": 1573,
-        "y": 134
+        "x": 1407,
+        "y": 179.33333333333334
       },
       "text_color": "white",
       "partial_color": "dodgerblue",
@@ -129,22 +120,17 @@
           "to": "TextStream",
           "input": 0,
           "output": 2
-        },
-        {
-          "to": "WebClient",
-          "input": 0,
-          "output": 4
         }
       ],
       "layout_grid": {
         "x": 8,
-        "y": 0,
+        "y": 11,
         "w": 4,
         "h": 14
       },
       "layout_node": {
-        "x": 1278,
-        "y": 93.88888888888889
+        "x": 1204,
+        "y": 90
       },
       "max_new_tokens": 128,
       "min_new_tokens": -1,
@@ -177,8 +163,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 910,
-        "y": -67
+        "x": 1408.6666666666667,
+        "y": 20
       },
       "check_time": 5,
       "alert_keyword": "yes",
@@ -213,8 +199,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 594.25,
-        "y": 248
+        "x": 586.6666666666666,
+        "y": 241
       },
       "init_kwargs": {
         "video_input": "/data/videos/demo/Fire_advan.mp4",
@@ -238,8 +224,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 808,
-        "y": 129
+        "x": 788,
+        "y": 153.66666666666666
       },
       "rate": 15.0,
       "chunk": null,
@@ -263,8 +249,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1171,
-        "y": -62
+        "x": 1597,
+        "y": 38.666666666666664
       },
       "voice": "en_US-libritts-high",
       "speaker": "p339",
@@ -293,8 +279,8 @@
       ],
       "layout_grid": {},
       "layout_node": {
-        "x": 1392,
-        "y": -54
+        "x": 1788,
+        "y": 40.333333333333336
       },
       "rate": 1.0,
       "chunk": 4800,
@@ -304,7 +290,7 @@
         "chunk": 4800,
         "drop_inputs": true,
         "on_demand": false,
-        "name": "RateLimit"
+        "name": "RateLimit_1"
       }
     },
     {
@@ -313,8 +299,8 @@
       "connections": [],
       "layout_grid": {},
       "layout_node": {
-        "x": 1663,
-        "y": -39
+        "x": 1987,
+        "y": 43.333333333333336
       },
       "init_kwargs": {}
     },
@@ -322,13 +308,20 @@
       "name": "VideoOutput",
       "type": "VideoOutput",
       "connections": [],
-      "layout_grid": {},
+      "layout_grid": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 11
+      },
       "layout_node": {
-        "x": 1738,
-        "y": 327
+        "x": 1609.6666666666667,
+        "y": 293
       },
       "ROI": false,
       "ROI_Coordinates": "0,0,1,1",
+      "ROI_color": "#ff0000",
+      "mjpeg_port": 10000,
       "init_kwargs": {
         "video_output": "display://",
         "ROI": false,

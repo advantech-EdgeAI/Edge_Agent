@@ -1,0 +1,21 @@
+/* Sensor view (docs/superpowers/specs/2026-10-13-sensor-view-design.md §2.3, §3, §4) */
+
+/* booth screen: only the logo (menus, mic/camera/speaker buttons and tegrastats hidden);
+   ?view=sensor&edit=1 leaves the class off */
+body.sensor-locked #navbarToggler,
+body.sensor-locked #navbarButtons,
+body.sensor-locked .navbar-toggler { display: none !important; }
+
+.sensor-signal-overlay {
+  position: absolute; inset: 0; z-index: 5; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 1.4rem; font-weight: 600;
+  pointer-events: none;
+}
+
+.imu-view { position: relative; flex: 1; min-height: 0; background: #111; border-radius: 6px; overflow: hidden; }
+.imu-view canvas { display: block; width: 100%; height: 100%; }
+.imu-view-readout {
+  position: absolute; left: 8px; bottom: 6px; z-index: 4;
+  font: 13px monospace; color: #ddd; pointer-events: none;
+}

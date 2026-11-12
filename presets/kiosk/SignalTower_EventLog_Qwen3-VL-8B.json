@@ -1,0 +1,71 @@
+{
+ "auto": {
+  "positions": {
+   "AutoPrompt_ICL": {
+    "x": 925,
+    "y": 109
+   },
+   "EventLog": {
+    "x": 2088,
+    "y": 202
+   },
+   "EventRecorder": {
+    "x": 1634,
+    "y": 277
+   },
+   "EventSummarizer": {
+    "x": 1843,
+    "y": 282
+   },
+   "One_Step_Alert": {
+    "x": 1395,
+    "y": 20
+   },
+   "PiperTTS": {
+    "x": 1664,
+    "y": 8
+   },
+   "RateLimit": {
+    "x": 758,
+    "y": 110
+   },
+   "RateLimit_1": {
+    "x": 1843,
+    "y": 8
+   },
+   "VideoOutput": {
+    "x": 1659,
+    "y": 136
+   },
+   "VideoOverlay": {
+    "x": 1397,
+    "y": 131
+   },
+   "VideoSource": {
+    "x": 568,
+    "y": 238
+   },
+   "WebAudioOut": {
+    "x": 2027,
+    "y": 5
+   },
+   "vLLM": {
+    "x": 1211,
+    "y": 24
+   }
+  },
+  "hidden": [],
+  "routes": {
+   "EventSummarizer:1>vLLM:0": [
+    [
+     2021,
+     249
+    ],
+    [
+     1277,
+     203
+    ]
+   ]
+  }
+ }
+}

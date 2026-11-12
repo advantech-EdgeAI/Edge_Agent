@@ -1,0 +1,13 @@
+{
+  "camera": {
+    "slots": [
+      {"slot": "camera",     "node": "VideoOutput",         "label": "相機", "label_en": "Camera",            "brand": "usb", "kind": "video", "track": true}
+    ]
+  },
+  "timezone": "Asia/Taipei",
+  "brain": {"chat": "AgentLoop", "input": "UserPrompt", "perf": "PerformanceMonitor", "tracking": "Tools_Hub", "idle_ms": 30000},
+  "single": {"title": "Edge AI Agent on Jetson AGX Orin", "video": "VideoOutput", "chat": "AgentLoop",
+             "input": "UserPrompt", "perf": "PerformanceMonitor", "tracking": "Tools_Hub",
+             "examples": {"zh": ["你現在看到什麼？", "畫面裡有幾個人？", "幫我追蹤畫面中的椅子", "停止追蹤"],
+                          "en": ["What do you see right now?", "How many people are in view?", "Track the chair in view", "Stop tracking"]}}
+}
