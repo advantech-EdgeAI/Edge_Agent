@@ -3,7 +3,7 @@
 📢 **Edge Agent v4.0.0 now supports both Jetson AGX Thor and Jetson AGX Orin (JetPack 7.2)!**
 
 **Looking for an earlier version?**
-- Jetson Thor with Edge Agent v3.0.0: switch to the [tag v3.0.0](https://github.com/advantech-EdgeAI/Edge_Agent/tree/v3.0.0).
+- Jetson Thor with JetPack 7.0: switch to the [tag v3.0.0](https://github.com/advantech-EdgeAI/Edge_Agent/tree/v3.0.0).
 - MIC-733 with JetPack 6.0: switch to the [tag v2.0.0](https://github.com/advantech-EdgeAI/Edge_Agent/tree/v2.0.0).
 
 Advantech Edge Agent is an interactive sandbox for quickly designing and testing automation agents, personal assistants and edge AI systems. It connects these to live cameras, sensors and I/O:
@@ -45,7 +45,7 @@ Advantech Edge Agent is built on Agent Studio from Jetson AI Lab, enhanced with 
 |-----------------|-------------------------------------------------------|
 | Product         | MIC-742-AT / MIC-743-AT (Jetson AGX Thor), MIC-733AO (Jetson AGX Orin 64GB) |
 | JetPack Version | V7.2 (Thor and Orin)                                  |
-| Storage         | Thor: pre-installed 1TB SSD. Orin: NVMe SSD with at least 256 GB |
+| Storage         | NVMe SSD with at least 256 GB (Thor and Orin)         |
 | USB Camera      | Logitech c270 HD webcam or any V4L2 compatible camera |
 | Internet        | Required during installation                          |
 
