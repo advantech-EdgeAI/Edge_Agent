@@ -1,0 +1,20 @@
+---
+name: my_skill
+description: One or two sentences the model reads to decide whether to load this skill - the kind of request it is for (for example "the user asks whether the storage is full") and what it helps with.
+---
+
+<!-- Template for your own skill. See README.md in this folder.
+     Copy it to nano_llm/plugins/harness/skills/<your_skill>/SKILL.md, set name to the folder
+     name and rewrite the description and the steps below. Only name and description are in the
+     system prompt; the model reads the rest when it calls load_skill. Remove this comment. -->
+
+## Steps
+
+1. Call `get_disk_usage` for the folder the user asks about (`/data` when they do not say).
+2. If less than 10 % is free, say so first and suggest deleting old event clips in the Event Log.
+3. Give the free space in GB, rounded to one decimal.
+
+## Common mistakes
+
+- Do not guess a number: call the tool every time, the free space changes.
+- If the tool says the folder does not exist, ask the user for the right path.

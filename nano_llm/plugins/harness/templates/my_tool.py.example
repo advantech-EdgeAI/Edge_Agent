@@ -1,0 +1,40 @@
+"""Template for your own harness tool. See README.md in this folder.
+
+Copy it into nano_llm/plugins/harness/tools/ under a new name ending in .py (the file name does not
+start with "_"), rename the function, and load the preset again: Tools_Hub picks up every tool
+module in that folder when it starts, and the new tool is switched on in every harness preset.
+
+As it is, this file is a working tool: it tells the model how much space is left on a disk.
+"""
+import os
+import shutil
+
+from nano_llm.plugins.harness.tool_contract import ToolError, ToolOutput, register_tool
+
+
+# The function name is the tool name the model sees. The docstring is the model's only
+# explanation of the tool: say what it does, when to use it and what it cannot do. Every
+# argument needs a line under "Args:" and a type annotation (str, int, float or bool);
+# an argument with a default value is optional.
+def get_disk_usage(path: str = "/data"):
+    """Return the used and free space of the disk that holds a folder. Use it when the
+    user asks how much storage is left. It does not list files or folder sizes.
+
+    Args:
+        path: absolute path of any folder on the disk, /data by default.
+    """
+    if not os.path.isdir(path):
+        # ToolError: an expected failure. Its message goes back to the model, which can retry
+        # or tell the user; the conversation goes on.
+        raise ToolError(f"no such folder: '{path}'.")
+    usage = shutil.disk_usage(path)
+    used, free = usage.used / 1024 ** 3, usage.free / 1024 ** 3
+    return ToolOutput(text=f"{path}: {used:.1f} GB used, {free:.1f} GB free.")
+
+
+# risk: "low" runs at once; "high" waits for Confirm / Deny in the chat panel (needs a SafetyReview
+#   node), for tools that write, delete, move hardware or run commands.
+# refetchable: True when calling it again gives the same kind of answer, so an old result may be
+#   dropped from a long conversation.
+# parallel_safe: True when it may run at the same time as other tools (it only reads).
+register_tool(get_disk_usage, risk="low", refetchable=True, parallel_safe=True)

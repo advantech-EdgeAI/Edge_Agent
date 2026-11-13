@@ -111,6 +111,27 @@ for d in "$FAST_MODELS"/models--*; do
 done
 [ ${#FAST_ARGS[@]} -gt 0 ] && echo "  models from the internal disk: $(( ${#FAST_ARGS[@]} / 2 )) ($FAST_MODELS)"
 
+# 4.0.2: on the first start this machine makes its own self-signed certificate (kept for later starts, so
+# the browser keeps its exception). Without openssl, or if it fails, the image's certificate is used.
+if [ ! -f "$CERT_DIR/server.cert.pem" ] || [ ! -f "$CERT_DIR/server.key.pem" ]; then
+    CERT_SAN="DNS:localhost,IP:127.0.0.1"
+    [[ "$(hostname)" =~ ^[A-Za-z0-9.-]+$ ]] && CERT_SAN="$CERT_SAN,DNS:$(hostname)"
+    for ip in $(hostname -I 2>/dev/null); do
+        [[ "$ip" =~ ^[0-9.]+$ ]] && CERT_SAN="$CERT_SAN,IP:$ip"
+    done
+    if mkdir -p "$CERT_DIR" 2>/dev/null && (umask 077; openssl req -x509 -newkey ec \
+            -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 3650 -subj "/CN=Edge Agent $(hostname)" \
+            -addext "subjectAltName=$CERT_SAN" -addext "extendedKeyUsage=serverAuth" \
+            -keyout "$CERT_DIR/server.key.pem.tmp" -out "$CERT_DIR/server.cert.pem.tmp") >/dev/null 2>&1; then
+        mv "$CERT_DIR/server.key.pem.tmp" "$CERT_DIR/server.key.pem"
+        mv "$CERT_DIR/server.cert.pem.tmp" "$CERT_DIR/server.cert.pem"
+        echo "  created this machine's HTTPS certificate: $CERT_DIR"
+    else
+        rm -f "$CERT_DIR/server.key.pem.tmp" "$CERT_DIR/server.cert.pem.tmp" 2>/dev/null
+        echo "  WARNING: could not create a certificate in $CERT_DIR (is openssl installed?); using the image's certificate"
+    fi
+fi
+
 CERT_ARGS=()
 if [ -f "$CERT_DIR/server.cert.pem" ] && [ -f "$CERT_DIR/server.key.pem" ]; then
     CERT_ARGS=(-v "$CERT_DIR:/etc/edge_agent_certs:ro"

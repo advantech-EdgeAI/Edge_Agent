@@ -20,7 +20,7 @@ It runs entirely on Jetson devices: on-device computing, low-latency streaming a
 
 - **Interactive Environment**: Design and test automation agents and personal assistants in a browser-based node editor.
 - **Multimodal Integration**: Combine LLMs and VLMs with speech and vision transformers for comprehensive AI solutions.
-- **Agents that See and Act**: A VLM-driven agent calls tools to read live camera frames, track objects and answer questions about the scene. Risky actions wait for your confirmation in the browser.
+- **Agents that See and Act**: A VLM-driven agent calls tools to read live camera frames, track objects and answer questions about the scene. Risky actions wait for your confirmation in the browser. Add your own tools and skills from a [template](https://github.com/advantech-EdgeAI/edge_agent/wiki/02-functional-node-descriptions#adding-your-own-tools-and-skills).
 - **Voice Interaction**: Wake word, speech recognition and spoken replies in Chinese and English.
 - **Event Recording**: Alerts save a video clip, and a VLM writes a summary of each event.
 - **Real-Time Sensor Integration**: Connect and interact with live sensors and I/O for real-world applications.
@@ -156,6 +156,8 @@ After ~20 seconds, open a browser and go to:
 ```
 https://<YOUR_DEVICE_IP>:8050
 ```
+
+The browser warns that the connection is not private: on its first start Edge Agent makes a self-signed certificate for this device (in `certs/`). Choose **Advanced** → **Proceed** (or **Accept the Risk and Continue**) once.
 
 ### 2. Check the Log
 
