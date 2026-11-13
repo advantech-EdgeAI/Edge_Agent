@@ -165,9 +165,7 @@ docker logs -f edge_agent_run
 
 ### 3. Start a Quick Demo Project
 
-Load a preset project for a quick demo. Click to learn more.
-
-<a href="https://www.youtube.com/watch?v=XNr-aNQwoPc"><img src="./images/media/quick_demo.gif"></a>
+In Studio, open **Agent → Load** in the toolbar and pick a preset project for a quick demo.
 
 ### 4. Show the Display Page
 
