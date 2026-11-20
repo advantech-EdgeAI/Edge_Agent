@@ -1107,7 +1107,7 @@ function addDatasetCollectorReadyModal(name) {
 const WAKE_WORD_STATE_LABELS = {
   sleeping: '💤 Say "Hey, Xiao Yan" to wake me', greeting: '👋 Greeting', listening: '🎙 Listening',
   thinking: '💭 Thinking', speaking: '🔊 Answering'};
-const WAKE_WORD_DECISION_LABELS = {wake: 'Wake', question: 'Question', ignored: 'Ignored', echo: 'Echo, filtered out'};
+const WAKE_WORD_DECISION_LABELS = {wake: 'Wake', question: 'Question', ignored: 'Ignored', echo: 'Echo, filtered out', 'other direction': 'Another direction, ignored'};
 var wakeWordStates = {};      // plugin name -> last state dict (+ listenDeadline, ms)
 var wakeWordKeys = {};        // plugin name -> KeyboardEvent.key that wakes it
 var wakeWordKeyHandlerInstalled = false;

@@ -6,7 +6,8 @@ function trackerRows(state) {
     source: c.source, enabled: !!c.enabled, objects: (c.objects || []).join(', '),
     fps: (c.enabled && typeof c.fps === 'number') ? `${c.fps.toFixed(1)} fps` : '—',
     count: (c.enabled && typeof c.count === 'number') ? `${c.count}` : '—',
-    note: c.note || '', depth: !!c.has_depth, examples: (c.examples || []).join(', ')}));
+    note: c.note || '', depth: !!c.has_depth, examples: (c.examples || []).join(', '),
+    matching: Object.entries(c.matching || {}).map(([name, d]) => `${name}: ${d}`).join(', ')}));
 }
 
 function changeText(state) {
@@ -167,7 +168,8 @@ function renderObjectTracker(name) {
       body.appendChild(tr);
     }
     tr.querySelector('.track-src').textContent = r.source + (r.depth ? ' 📏' : '') +
-      (r.examples ? ` · boxed: ${r.examples}` : '') + (r.note ? ` ⚠ ${r.note}` : '');
+      (r.examples ? ` · boxed: ${r.examples}` : '') + (r.matching ? ` · matching: ${r.matching}` : '') +
+      (r.note ? ` ⚠ ${r.note}` : '');
     const b = tr.querySelector('button');
     b.textContent = r.enabled ? 'On' : 'Off';
     b.dataset.on = r.enabled ? '1' : '0';

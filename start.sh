@@ -9,9 +9,20 @@ if [ -z "$HUGGINGFACE_TOKEN" ] && [ -f "$SCRIPT_DIR/.env" ]; then
     source "$SCRIPT_DIR/.env"
 fi
 # Without a token Studio starts offline: every model must already be under data/models.
-# With one, missing HuggingFace models download on first use.
-if [ -n "$HUGGINGFACE_TOKEN" ]; then
+# With one, missing HuggingFace models download on first use - but only when huggingface.co is
+# reachable: with no internet (a site whose only network port links two machines) online mode makes
+# every HuggingFace call wait for the network, so it starts offline too (2026-11-18).
+HUB_HOST=${EDGE_AGENT_HUB_HOST:-huggingface.co}
+HUB_PORT=${EDGE_AGENT_HUB_PORT:-443}
+hub_reachable() {
+    # DNS lookup + TCP connect, given up after 4 s (a DNS server that never answers, no route)
+    timeout 4 bash -c "exec 3<>/dev/tcp/$HUB_HOST/$HUB_PORT" 2>/dev/null
+}
+if [ -n "$HUGGINGFACE_TOKEN" ] && hub_reachable; then
     HF_ARGS=(--env HUGGINGFACE_TOKEN="$HUGGINGFACE_TOKEN")
+elif [ -n "$HUGGINGFACE_TOKEN" ]; then
+    echo "Cannot reach $HUB_HOST: starting offline - models are read from data/models only."
+    HF_ARGS=(--env HUGGINGFACE_TOKEN="$HUGGINGFACE_TOKEN" --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1)
 else
     echo "No HUGGINGFACE_TOKEN (.env): starting offline - models are read from data/models only."
     echo "  To download missing models, create .env in the project root with HUGGINGFACE_TOKEN=hf_..."
