@@ -266,7 +266,6 @@
     {
       "name": "vLLM",
       "type": "vLLM",
-      "extra_engine_args": "{\"max_num_seqs\": 2}",
       "connections": [],
       "layout_grid": {},
       "layout_node": {
@@ -292,8 +291,7 @@
         "max_model_len": 16384,
         "name": "vLLM",
         "mtp_speculative_tokens": 1
-      },
-      "mtp_speculative_tokens": 1
+      }
     },
     {
       "name": "VideoSource",

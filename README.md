@@ -1,6 +1,6 @@
 # Advantech Edge Agent
 
-📢 **Edge Agent v4.0.0 now supports both Jetson AGX Thor and Jetson AGX Orin (JetPack 7.2)!**
+📢 **Edge Agent v4.1 supports both Jetson AGX Thor and Jetson AGX Orin (JetPack 7.2)!**
 
 **Looking for an earlier version?**
 - Jetson Thor with JetPack 7.0: switch to the [tag v3.0.0](https://github.com/advantech-EdgeAI/Edge_Agent/tree/v3.0.0).
@@ -43,11 +43,11 @@ Advantech Edge Agent is built on Agent Studio from Jetson AI Lab, enhanced with 
 
 | Name            | Description                                           |
 |-----------------|-------------------------------------------------------|
-| Product         | MIC-742-AT / MIC-743-AT (Jetson AGX Thor), MIC-733AO (Jetson AGX Orin 64GB) |
+| Product         | MIC-741-AT / MIC-742-AT / MIC-743-AT (Jetson AGX Thor), MIC-733AO (Jetson AGX Orin 64GB) |
 | JetPack Version | V7.2 (Thor and Orin)                                  |
-| Storage         | NVMe SSD with at least 256 GB (Thor and Orin)         |
-| USB Camera      | Logitech c270 HD webcam or any V4L2 compatible camera |
-| Internet        | Required during installation                          |
+| Storage         | NVMe SSD with at least 256 GB, and at least 150 GB free for Edge Agent (see below) |
+| USB Camera      | Logitech c270 HD webcam or any V4L2 compatible camera (for a depth camera such as Intel RealSense, see [Cameras](#cameras)) |
+| Internet        | Required during installation, and the first time each preset loads (see [First Run Needs Internet](#first-run-needs-internet)) |
 
 ### 1. Clone this Repository
 
@@ -78,7 +78,17 @@ sudo systemctl restart docker
 
 ### 3. Pull the Docker Image
 
-The image is ~23 GB to download and ~70 GB once extracted. Ensure your disk has sufficient free space before pulling.
+The image is ~23 GB to download and ~70 GB once extracted (~93 GB in all when Docker uses the containerd image store, which keeps the download as well). It provides the runtime only: the Edge Agent code is this repository, so the image tag stays `4.0.0-jp7` while the repository moves on.
+
+Disk space used, roughly:
+
+| Item | Size |
+|---|---|
+| Docker image | ~70 GB (~93 GB with the containerd image store) |
+| Data package (`data/`) | ~13 GB |
+| vLLM models, downloaded on first use | Qwen3.8-27B ~21 GB, Qwen3-VL-8B ~10 GB, Cosmos-Reason2-2B ~4.6 GB |
+
+Keep at least 150 GB free before pulling.
 
 ```bash
 docker pull ispsae/nano_llm:4.0.0-jp7
@@ -119,7 +129,7 @@ edge_agent/
 
 ### 5. Configure Hugging Face Access Token
 
-Please go to Hugging Face official website to [generate your personal access token](https://huggingface.co/settings/tokens) for pulling models from Hugging Face. You will only need to generate the one with ***read*** permission.
+Please go to Hugging Face official website to [generate your personal access token](https://huggingface.co/settings/tokens) for pulling models from Hugging Face. You will only need to generate the one with ***read*** permission. A *fine-grained* token also needs **Read access to contents of all public gated repos you can access**, for the gated models below.
 
 ![](./images/media/create_access_token.png)
 
@@ -141,6 +151,12 @@ Some models are gated (for example `nvidia/Cosmos-Reason2-2B`, and `nvidia/Cosmo
 
 The token is only needed to download models. Each model is downloaded the first time a preset uses it. Without `.env`, Edge Agent starts offline and uses only the models already in `data/models`.
 
+### First Run Needs Internet
+
+The first time you load a preset, connect the device to the internet and set up `.env` first: the preset downloads the models it needs that are not in the data package. This includes the vLLM models, and also parts of presets that otherwise use the data package: VILA presets download the VILA vision encoder (~0.9 GB) and YOLO-World presets their text encoder (~0.3 GB). Without internet or without `.env`, such a preset fails to load the first time.
+
+Once every preset you use has loaded once, Edge Agent runs offline.
+
 ## Usage / Quick Start
 
 ### 1. Start Edge Agent
@@ -158,6 +174,14 @@ https://<YOUR_DEVICE_IP>:8050
 ```
 
 The browser warns that the connection is not private: on its first start Edge Agent makes a self-signed certificate for this device (in `certs/`). Choose **Advanced** → **Proceed** (or **Accept the Risk and Continue**) once.
+
+The first time a vLLM preset loads, it downloads the model and prepares it for your device: about 10 minutes for Cosmos-Reason2-2B, 20 minutes for Qwen3-VL-8B and 40 minutes for Qwen3.8-27B (depending on your network). Later loads take a few minutes. Do not restart Edge Agent while a model is downloading: the download does not resume and leaves partial files behind.
+
+Presets that show video on the device's own screen need a desktop session: log in on the device first. Without one, the video is shown in the browser instead.
+
+### Cameras
+
+The USB camera presets use `/dev/video0`. A camera with several sensors, such as an Intel RealSense, has one video device per sensor (depth, infrared, colour); Edge Agent switches to the colour one of the same camera and shows a notice. To choose another camera, pick it in the `VideoSource` node's `video_input` menu and save the preset. To see what each device sends, run `v4l2-ctl -d /dev/videoN --list-formats` on the device: a colour camera lists `YUYV` or `MJPG`.
 
 ### 2. Check the Log
 

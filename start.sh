@@ -149,6 +149,17 @@ if [ -f "$CERT_DIR/server.cert.pem" ] && [ -f "$CERT_DIR/server.key.pem" ]; then
                --env SSL_CERT=/etc/edge_agent_certs/server.cert.pem --env SSL_KEY=/etc/edge_agent_certs/server.key.pem)
 fi
 
+# nanoowl/data/ is git-ignored, so a fresh clone has no such folder and trtexec cannot write the
+# OwlV2 TensorRT engine there on first use (MIC-741 fresh install, 2026-11-20).
+mkdir -p "$SCRIPT_DIR/nanoowl/data"
+
+# Host files jetson-utils / the encoder read when they exist; a fresh JetPack 7.2.1 has neither, and
+# mounting a missing path makes docker create it on the host as an empty root-owned folder.
+HOST_FILE_ARGS=()
+for f in /etc/enctune.conf /tmp/nv_jetson_model; do
+    [ -f "$f" ] && HOST_FILE_ARGS+=(--volume "$f:$f")
+done
+
 # -v /dev:/dev: --privileged only grants the container the *device nodes that
 # already existed on the host* at container-create time - a long-running
 # container started before a USB camera was plugged in (or re-enumerated)
@@ -163,9 +174,8 @@ docker run \
   --memory=100g \
   --memory-swap=100g \
   --volume /tmp/argus_socket:/tmp/argus_socket \
-  --volume /etc/enctune.conf:/etc/enctune.conf \
+  "${HOST_FILE_ARGS[@]}" \
   --volume /etc/nv_tegra_release:/etc/nv_tegra_release \
-  --volume /tmp/nv_jetson_model:/tmp/nv_jetson_model \
   --volume /var/run/dbus:/var/run/dbus \
   --volume /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket \
   --volume /var/run/docker.sock:/var/run/docker.sock \
@@ -183,7 +193,7 @@ docker run \
   "${HF_ARGS[@]}" \
   "${LOAD_ARGS[@]}" \
   "${CERT_ARGS[@]}" \
-  --env VLLM_LOAD_WATCHDOG_SEC=1800 \
+  --env EDGE_AGENT_VLLM_LOAD_WATCHDOG_SEC=1800 \
   --env PYTHONUTF8=1 \
   --env VLLM_NO_USAGE_STATS=1 --env DO_NOT_TRACK=1 --env ORT_DISABLE_TELEMETRY=1 --env HF_HUB_DISABLE_TELEMETRY=1 \
   --privileged \
